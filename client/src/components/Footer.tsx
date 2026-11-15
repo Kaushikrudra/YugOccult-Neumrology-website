@@ -26,7 +26,7 @@ export const Footer: React.FC = () => {
           {/* Brand info */}
           <div className="space-y-3.5 sm:space-y-4">
             <div>
-              <Link to="/" className="inline-block" aria-label="YugOccult Learning Academy Home">
+              <Link to="/" className="inline-block" aria-label="YugSkills Learning Institute Home">
                 <Logo
                   variant="light"
                   className="h-14 sm:h-18 md:h-20 w-auto mb-1.5 sm:mb-2 group-hover:scale-105 transition-transform"
@@ -201,7 +201,7 @@ export const Footer: React.FC = () => {
 
         {/* Bottom copyright line */}
         <div className="pt-6 sm:pt-8 border-t border-secondary/30 flex flex-col sm:flex-row items-center justify-between text-xs text-ivory/60 gap-3 sm:gap-4 text-center sm:text-left">
-          <p>© 2026 YugOccult Learning Academy. All rights reserved.</p>
+          <p>© 2026 YugSkills Learning Institute. All rights reserved.</p>
           <div className="flex items-center gap-4">
             <Link to="/admin/login" className="hover:text-accent transition-colors">
               Portal Login

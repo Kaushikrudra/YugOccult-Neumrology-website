@@ -214,7 +214,7 @@ export const AdminEnquiries: React.FC = () => {
         ? `Astrology Question (${enquiry.question_count || 1} Question${(enquiry.question_count || 1) > 1 ? 's' : ''} • ₹${enquiry.amount || 499})`
         : 'Enquiry'
 
-    const message = `Namaste ${enquiry.name}, this is YugOccult Learning Academy regarding your ${enquiryTitle}. We have received your request and payment details, and are happy to guide you.`
+    const message = `Namaste ${enquiry.name}, this is YugSkills Learning Institute regarding your ${enquiryTitle}. We have received your request and payment details, and are happy to guide you.`
     return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
   }
 

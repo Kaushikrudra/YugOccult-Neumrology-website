@@ -12,7 +12,7 @@ export interface LogoProps {
 export const Logo: React.FC<LogoProps> = ({
   variant = 'full',
   className = '',
-  alt = 'YugOccult Learning Academy',
+  alt = 'YugSkills Learning Institute',
 }) => {
   const getLogoSource = () => {
     switch (variant) {

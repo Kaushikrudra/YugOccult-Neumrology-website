@@ -284,7 +284,7 @@ export const Contact: React.FC = () => {
                             WhatsApp Guidance
                           </strong>
                           <a
-                            href={`https://wa.me/${cleanWhatsApp}?text=Hare%20Krishna,%20I%20would%20like%20to%20enquire%20about%20YugOccult%20Learning%20Academy%20consultations.`}
+                            href={`https://wa.me/${cleanWhatsApp}?text=Hare%20Krishna,%20I%20would%20like%20to%20enquire%20about%20YugSkills%20Learning%20Institute%20consultations.`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-ivory/90 hover:text-accent transition-colors font-medium"

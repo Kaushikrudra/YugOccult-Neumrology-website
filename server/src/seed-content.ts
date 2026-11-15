@@ -632,7 +632,7 @@ async function seedContent() {
           id: 'faq-3',
           question: 'Are the remedies expensive or fear-inducing?',
           answer:
-            'Never. At YugOccult Learning Academy, our sacred philosophy strictly rejects fear-mongering and commercial ritual exploitation. We prescribe accessible, classical Vedic remedies such as mantra vibrations, dietary alignments, charitable donations (Daana), and optional natural gemstones.',
+            'Never. At YugSkills Learning Institute, our sacred philosophy strictly rejects fear-mongering and commercial ritual exploitation. We prescribe accessible, classical Vedic remedies such as mantra vibrations, dietary alignments, charitable donations (Daana), and optional natural gemstones.',
         },
         {
           id: 'faq-4',
@@ -702,7 +702,7 @@ async function seedContent() {
           ]),
           'Anushka Yadav',
           'Master Astrologer, Numerologist & Tarot Guide',
-          "Welcome to YugOccult Learning Academy. My mission is to demystify Indian astrology and numerological science from superstitious exploitation. Astrology is an illuminating lantern—a divine science ('Jyotir-Isha') designed to illuminate the path ahead, identify planetary timings, and empower conscious free will.\n\nHaving studied under traditional Gurukul lineages and verified thousands of real-life horoscopes, every reading combines rigorous mathematical accuracy (Parashari, Jaimini, and Chaldean grids) with compassionate, ethical life advice.",
+          "Welcome to YugSkills Learning Institute. My mission is to demystify Indian astrology and numerological science from superstitious exploitation. Astrology is an illuminating lantern—a divine science ('Jyotir-Isha') designed to illuminate the path ahead, identify planetary timings, and empower conscious free will.\n\nHaving studied under traditional Gurukul lineages and verified thousands of real-life horoscopes, every reading combines rigorous mathematical accuracy (Parashari, Jaimini, and Chaldean grids) with compassionate, ethical life advice.",
           JSON.stringify([
             'Vedic Astrology',
             'Chaldean Numerology',
@@ -719,7 +719,7 @@ async function seedContent() {
           'ASTROLOGY • NUMEROLOGY • TAROT',
           "Illuminate Your Soul's Path with Sacred Vedic Guidance",
           'Experience non-fear-based authentic horoscope readings and clinical numerological alignment. Discover clarity for your career, relationships, and spiritual dharma.',
-          'YugOccult Learning Academy | Astrology, Numerology & Tarot',
+          'YugSkills Learning Institute | Astrology, Numerology & Tarot',
           'Empowering your journey with authentic Vedic astrology readings, numerology blueprints, and certified spiritual courses in Astrology, Numerology & Tarot.',
         ]
       )

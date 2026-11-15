@@ -64,7 +64,7 @@ const defaultSettings: SiteSettings = {
   about_name: 'Anushka Yadav',
   about_title: 'Occult Master Astrologer, Numerologist & Tarot Guide',
   about_bio:
-    "Welcome to YugOccult Learning Academy. My mission is to demystify Indian astrology and numerological science from superstitious exploitation. Astrology is an illuminating lantern—a divine science ('Jyotir-Isha') designed to illuminate the path ahead, identify planetary timings, and empower conscious free will.\n\nHaving studied under traditional Gurukul lineages and verified thousands of real-life horoscopes, every reading combines rigorous mathematical accuracy (Parashari, Jaimini, and Chaldean grids) with compassionate, ethical life advice.",
+    "Welcome to YugSkills Learning Institute. My mission is to demystify Indian astrology and numerological science from superstitious exploitation. Astrology is an illuminating lantern—a divine science ('Jyotir-Isha') designed to illuminate the path ahead, identify planetary timings, and empower conscious free will.\n\nHaving studied under traditional Gurukul lineages and verified thousands of real-life horoscopes, every reading combines rigorous mathematical accuracy (Parashari, Jaimini, and Chaldean grids) with compassionate, ethical life advice.",
   about_expertise: [
     'Vedic Astrology',
     'Chaldean Numerology',
@@ -83,7 +83,7 @@ const defaultSettings: SiteSettings = {
   hero_headline: "Illuminate Your Soul's Path with Sacred Vedic Guidance",
   hero_subtitle:
     'Experience non-fear-based authentic horoscope readings and clinical numerological alignment. Discover clarity for your career, relationships, and spiritual dharma.',
-  meta_title: 'YugOccult Learning Academy | Astrology, Numerology & Tarot',
+  meta_title: 'YugSkills Learning Institute | Astrology, Numerology & Tarot',
   meta_description:
     'Empowering your journey with authentic Vedic astrology readings, numerology blueprints, and certified spiritual courses in Astrology, Numerology & Tarot.',
   why_choose_points: [],

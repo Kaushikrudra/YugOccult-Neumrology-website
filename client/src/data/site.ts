@@ -22,7 +22,7 @@ export interface SiteConfig {
 }
 
 export const siteConfig: SiteConfig = {
-  brandName: 'YugOccult Learning Academy',
+  brandName: 'YugSkills Learning Institute',
   tagline: 'ASTROLOGY • NUMEROLOGY • TAROT',
   phone: '+91 89229 46307',
   email: 'anushkayadava37@gmail.com',

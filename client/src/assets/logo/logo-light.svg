@@ -59,13 +59,13 @@
     <polygon points="42,69 43.3,70.8 42,72.6 40.7,70.8" fill="#C9A227" />
   </g>
 
-  <!-- Wordmark Line 1: YugOccult (Light) -->
+  <!-- Wordmark Line 1: YugSkills (Light) -->
   <text x="102" y="46" class="brand-title-light">
-    <tspan class="brand-astro-light">Yug</tspan><tspan class="brand-veda-light">Occult</tspan>
+    <tspan class="brand-astro-light">Yug</tspan><tspan class="brand-veda-light">Skills</tspan>
   </text>
 
-  <!-- Wordmark Line 2: LEARNING ACADEMY (Bold Light) -->
+  <!-- Wordmark Line 2: LEARNING INSTITUTE (Bold Light) -->
   <text x="103" y="68" class="brand-sub-light">
-    LEARNING ACADEMY
+    LEARNING INSTITUTE
   </text>
 </svg>

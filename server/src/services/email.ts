@@ -108,7 +108,7 @@ https://wa.me/${data.whatsappNumber.replace(/\D/g, '')}
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'YugOccult Academy <notifications@yugoccult.com>',
+          from: 'YugSkills Institute <notifications@yugoccult.com>',
           to: [ADMIN_NOTIFICATION_EMAIL],
           subject,
           text: textBody,

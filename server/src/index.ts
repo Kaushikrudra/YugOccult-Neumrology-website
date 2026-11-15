@@ -103,7 +103,7 @@ app.use('/api/account', accountRouter)
 // Root Welcome Route
 app.get('/', (_req: Request, res: Response) => {
   res.status(200).json({
-    message: 'YugOccult Learning Academy API is running.',
+    message: 'YugSkills Learning Institute API is running.',
     health: '/api/health',
   })
 })
@@ -127,7 +127,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, HOST, () => {
-    console.log(`[Server] YugOccult Learning Academy API running on http://${HOST}:${PORT}`)
+    console.log(`[Server] YugSkills Learning Institute API running on http://${HOST}:${PORT}`)
   })
 }
 
