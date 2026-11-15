@@ -269,7 +269,7 @@ export const Home: React.FC = () => {
       {settings.show_stats && settings.stats && settings.stats.length > 0 && (
         <section className="mt-8 sm:mt-12 relative z-20">
           <Container>
-            <div className="bg-[#5B3E96] rounded-2xl sm:rounded-3xl border border-[#C9A227]/35 shadow-xl p-5 sm:p-8">
+            <div className="bg-[#5B3E96] rounded-2xl sm:rounded-3xl border border-[#C9A227]/30 shadow-xl p-5 sm:p-8">
               <div
                 className={`grid grid-cols-2 ${
                   settings.stats.length >= 4
@@ -277,14 +277,14 @@ export const Home: React.FC = () => {
                     : settings.stats.length === 3
                     ? 'lg:grid-cols-3'
                     : 'lg:grid-cols-2'
-                } gap-6 sm:gap-8 text-center divide-y lg:divide-y-0 lg:divide-x divide-[#C9A227]/25`}
+                } gap-6 sm:gap-8 text-center divide-y lg:divide-y-0 lg:divide-x divide-white/20`}
               >
                 {settings.stats.map((item, idx) => (
                   <div key={idx} className="pt-2 lg:pt-0">
-                    <span className="block font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-[#C9A227]">
+                    <span className="block font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-white">
                       {item.value}
                     </span>
-                    <span className="text-xs sm:text-sm text-[#C9A227]/90 font-medium uppercase tracking-wider mt-1 block">
+                    <span className="text-xs sm:text-sm text-white/85 font-medium uppercase tracking-wider mt-1 block">
                       {item.label}
                     </span>
                   </div>
