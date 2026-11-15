@@ -11,7 +11,7 @@ export default {
         secondary: "#5B3E96",
         accent: "#C9A227",
         cta: "#F08A24",
-        ivory: "#FBF7EE",
+        ivory: "#FFFFFF",
         mist: "#EFEAF8",
         ink: "#2B2A3D",
       },

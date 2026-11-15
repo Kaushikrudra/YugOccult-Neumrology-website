@@ -35,7 +35,7 @@ const AdminSiteSettings = lazy(() => import('./pages/admin/AdminSiteSettings'))
 
 // Branded loading fallback for lazy bundles
 const LoadingFallback: React.FC = () => (
-  <div className="min-h-screen bg-[#FBF7EE] flex flex-col items-center justify-center p-6 text-center">
+  <div className="min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
     <div className="w-10 h-10 rounded-full border-3 border-[#EFEAF8] border-t-[#2E2A5C] animate-spin mb-4" />
     <p className="text-xs font-semibold tracking-widest uppercase text-[#2E2A5C]/70">
       Loading...
