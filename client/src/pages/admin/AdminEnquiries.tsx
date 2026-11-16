@@ -319,7 +319,7 @@ export const AdminEnquiries: React.FC = () => {
             >
               <option value="all">All Types</option>
               <option value="kundli">Kundli (₹499)</option>
-              <option value="ask_question">Ask Question (₹499 - ₹1,299)</option>
+              <option value="ask_question">Ask Question (₹699 - ₹1,599)</option>
               <option value="contact">Contact Message</option>
             </select>
           </div>

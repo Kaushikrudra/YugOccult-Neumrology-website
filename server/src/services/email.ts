@@ -37,7 +37,7 @@ export async function sendAdminPurchaseNotification(
     itemTitle = `Kundli Request (₹${data.amount || 499})`
   } else if (data.type === 'ask_question') {
     const count = data.questionCount || 1
-    itemTitle = `Ask Astrologer (${count} Question${count > 1 ? 's' : ''} - ₹${data.amount || (count === 1 ? 499 : count === 2 ? 999 : 1299)})`
+    itemTitle = `Ask Astrologer (${count} Question${count > 1 ? 's' : ''} - ₹${data.amount || (count === 1 ? 699 : count === 2 ? 999 : 1599)})`
   } else if (data.type === 'course') {
     itemTitle = `Course Enrollment (₹${data.amount || 0})`
   } else if (data.type === 'consultation') {

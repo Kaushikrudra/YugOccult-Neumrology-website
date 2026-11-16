@@ -31,9 +31,9 @@ interface FormErrors {
 }
 
 const QUESTION_PRICING: Record<1 | 2 | 3, number> = {
-  1: 499,
+  1: 699,
   2: 999,
-  3: 1299,
+  3: 1599,
 }
 
 export const LeadCaptureSection: React.FC = () => {
@@ -57,7 +57,7 @@ export const LeadCaptureSection: React.FC = () => {
   const [fkConsent, setFkConsent] = useState(false)
 
   // ==========================================
-  // Form State: Ask the Astrologer (1 Q: ₹499 | 2 Qs: ₹999 | 3 Qs: ₹1299)
+  // Form State: Ask the Astrologer (1 Q: ₹699 | 2 Qs: ₹999 | 3 Qs: ₹1599)
   // ==========================================
   const [questionTier, setQuestionTier] = useState<1 | 2 | 3>(1)
   const [q1, setQ1] = useState('')
@@ -228,7 +228,7 @@ export const LeadCaptureSection: React.FC = () => {
     }
   }
 
-  // Submit Ask the Astrologer Request (Tiered: ₹499, ₹999, ₹1299)
+  // Submit Ask the Astrologer Request (Tiered: ₹699, ₹999, ₹1599)
   const handleSubmitAskQuestion = async (e: React.FormEvent) => {
     e.preventDefault()
     const errors: FormErrors = {}
@@ -412,8 +412,9 @@ export const LeadCaptureSection: React.FC = () => {
                 <MessageCircle className="w-4 h-4 text-accent" />
                 <span>Ask the Astrologer</span>
                 <span className="ml-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-accent/20 text-accent">
-                  From ₹499
+                  From ₹699
                 </span>
+                
               </button>
             </div>
           </div>
@@ -775,7 +776,7 @@ export const LeadCaptureSection: React.FC = () => {
           )}
 
           {/* ============================================================== */}
-          {/* TAB 2: ASK THE ASTROLOGER (1 Q: ₹499 | 2 Qs: ₹999 | 3 Qs: ₹1299) */}
+          {/* TAB 2: ASK THE ASTROLOGER (1 Q: ₹699 | 2 Qs: ₹999 | 3 Qs: ₹1599) */}
           {/* ============================================================== */}
           {activeTab === 'ask_question' && (
             <div className="p-6 sm:p-8">

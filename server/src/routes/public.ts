@@ -265,10 +265,10 @@ publicRouter.post(
       data.amount ||
       (data.type === 'ask_question'
         ? questionCount === 1
-          ? 499
+          ? 699
           : questionCount === 2
           ? 999
-          : 1299
+          : 1599
         : 499)
 
     const subject =
