@@ -209,7 +209,7 @@ export const Contact: React.FC = () => {
         <Container>
           <SectionHeading
             eyebrow="Get In Touch"
-            title="Connect With Our Spiritual Center"
+            title="Connect With Our Institute"
             subtitle="Have questions about our Astrology, Numerology &amp; Tarot consultations, certified courses, or Vedic remedies? We are here to guide you."
           />
         </Container>
@@ -226,7 +226,7 @@ export const Contact: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-accent shrink-0" />
                   <h3 className="font-heading text-xl sm:text-2xl font-bold text-ivory">
-                    Sacred Sanctum
+                    YugSkills Learning institute
                   </h3>
                 </div>
                 <p className="text-ivory/80 text-xs sm:text-sm leading-relaxed">

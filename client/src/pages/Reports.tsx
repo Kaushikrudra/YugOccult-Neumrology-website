@@ -99,7 +99,7 @@ export const Reports: React.FC = () => {
             </div>
             <div className="bg-white/80 backdrop-blur-sm p-3.5 rounded-xl border border-secondary/15 shadow-xs">
               <Clock className="w-5 h-5 text-[#C9A227] mx-auto mb-1.5" />
-              <p className="text-xs font-bold text-[#2E2A5C]">24-48 Hours Delivery</p>
+              <p className="text-xs font-bold text-[#2E2A5C]">2-7 Days Delivery</p>
               <p className="text-[11px] text-ink/70">Fast & confidential</p>
             </div>
             <div className="bg-white/80 backdrop-blur-sm p-3.5 rounded-xl border border-secondary/15 shadow-xs">
