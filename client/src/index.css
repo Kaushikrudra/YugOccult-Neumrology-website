@@ -60,12 +60,42 @@
   animation: orbit-slow 240s linear infinite;
 }
 
+@keyframes emblem-spin-cw {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes emblem-spin-ccw {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(-360deg);
+  }
+}
+
+.animate-emblem-cw {
+  transform-origin: 500px 500px;
+  animation: emblem-spin-cw 240s linear infinite;
+}
+
+.animate-emblem-ccw {
+  transform-origin: 500px 500px;
+  animation: emblem-spin-ccw 240s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
   .animate-spin-slow,
-  .animate-orbit-slow {
+  .animate-orbit-slow,
+  .animate-emblem-cw,
+  .animate-emblem-ccw {
     animation: none !important;
   }
 }

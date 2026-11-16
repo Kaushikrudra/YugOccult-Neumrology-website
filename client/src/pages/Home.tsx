@@ -15,7 +15,7 @@ import Container from '../components/Container'
 import Button from '../components/Button'
 import SectionHeading from '../components/SectionHeading'
 import CourseCard from '../components/CourseCard'
-import ZodiacWheel from '../components/ZodiacWheel'
+import ZodiacRingEmblem from '../components/ZodiacRingEmblem'
 import HeroSideDecor from '../components/HeroSideDecor'
 import HomeAboutSection from '../components/HomeAboutSection'
 import { coursesData, Course } from '../data/courses'
@@ -155,34 +155,21 @@ export const Home: React.FC = () => {
 
   return (
     <div className="space-y-14 sm:space-y-24 pb-14 sm:pb-24">
-      {/* 1. Hero Section with Deep Indigo Gradient, Rotating Zodiac Wheel & Concentric Orbit Rings */}
-      <section className="relative overflow-hidden flex flex-col justify-center items-center min-h-[640px] md:min-h-[720px] lg:min-h-[800px] xl:min-h-[850px] py-16 sm:py-20 md:py-24 bg-gradient-to-br from-[#1E1B4B] via-[#2E2A5C] to-[#3B2A70] border-b-[3px] border-accent">
+      {/* 1. Hero Section with Deep Indigo Gradient, Zodiac Ring Emblem */}
+      <section className="relative overflow-hidden flex flex-col justify-center items-center py-12 md:py-16 lg:py-20 bg-gradient-to-br from-[#1E1B4B] via-[#2E2A5C] to-[#3B2A70] border-b-[3px] border-accent">
         {/* Soft Radial Celestial Glow (Violet/Gold, strictly no black) */}
         <div
           className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,_rgba(201,162,39,0.08)_0%,_rgba(91,62,150,0.18)_50%,_transparent_75%)]"
           aria-hidden="true"
         />
 
-        {/* Outer Concentric Orbit Rings & Constellations (Spanning to left and right edges, behind wheel) */}
+        {/* Outer Concentric Orbit Rings & Constellations (Hidden on mobile/tablet < lg, soft opacity on lg+) */}
         <div
-          className="absolute inset-0 pointer-events-none select-none flex items-center justify-center z-0 overflow-hidden"
+          className="hidden lg:flex absolute inset-0 pointer-events-none select-none items-center justify-center z-0 overflow-hidden opacity-60"
           aria-hidden="true"
         >
-          <div className="aspect-square flex items-center justify-center w-[250%] sm:w-[220%] md:w-auto md:h-[220%] lg:h-[235%] xl:h-[250%] max-w-none">
+          <div className="aspect-square flex items-center justify-center w-[250%] md:w-auto lg:h-[235%] xl:h-[250%] max-w-none">
             <HeroSideDecor className="w-full h-full animate-orbit-slow" color="#C9A227" />
-          </div>
-        </div>
-
-        {/* Large Prominent Rotating Zodiac Wheel (High Visibility 0.92, Full Circle Fit, Center Aligned) */}
-        <div
-          className="absolute inset-0 pointer-events-none select-none flex items-center justify-center z-[1] overflow-hidden"
-          aria-hidden="true"
-        >
-          <div className="aspect-square opacity-[0.92] flex items-center justify-center w-[92%] max-w-[560px] md:w-auto md:max-w-[92%] md:h-[90%] lg:h-[92%] max-h-full">
-            <ZodiacWheel
-              className="w-full h-full animate-spin-slow"
-              color="#C9A227"
-            />
           </div>
         </div>
 
@@ -194,7 +181,7 @@ export const Home: React.FC = () => {
 
         {/* Widened Hero Content Container */}
         <Container size="full" className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 relative z-20 my-auto min-w-0">
-          <div className="text-center w-full mx-auto space-y-4 sm:space-y-6 min-w-0">
+          <div className="text-center w-full mx-auto space-y-4 sm:space-y-6 min-w-0 flex flex-col items-center">
             {/* Sacred Eyebrow Pill */}
             {settings.hero_badge && (
               <div className="inline-flex max-w-full items-center justify-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-ivory/10 backdrop-blur-md border border-accent/40 text-ivory shadow-xs hero-text-shadow">
@@ -214,18 +201,53 @@ export const Home: React.FC = () => {
               </div>
             )}
 
-            {/* Stretched Tagline / Subtitle */}
-            {settings.hero_subtitle && (
-              <div className="max-w-4xl mx-auto w-full min-w-0 px-1 sm:px-2">
-                <p className="text-xs min-[360px]:text-sm sm:text-base md:text-lg text-[#EFEAF8] leading-relaxed font-normal hero-text-shadow break-words">
-                  {settings.hero_subtitle}
-                </p>
-              </div>
-            )}
+            {/* Sacred Gold Divider with Delicate Lotus Icon */}
+            <div
+              className="w-[min(320px,80%)] mx-auto flex items-center justify-center gap-3 my-1 sm:my-2"
+              aria-hidden="true"
+            >
+              <div className="flex-1 h-[1px] bg-gradient-to-r from-transparent via-[#C9A227]/70 to-[#C9A227]" />
+              <svg
+                viewBox="0 0 24 24"
+                className="w-5 h-5 text-accent shrink-0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path
+                  d="M12 4C10.5 7 10 10 12 14C14 10 13.5 7 12 4Z"
+                  fill="#C9A227"
+                  fillOpacity="0.3"
+                  stroke="#C9A227"
+                />
+                <path
+                  d="M12 14C9.5 13 6 10.5 6 7C8.5 7.5 11 10.5 12 14Z"
+                  fill="#C9A227"
+                  fillOpacity="0.2"
+                  stroke="#C9A227"
+                />
+                <path
+                  d="M12 14C14.5 13 18 10.5 18 7C15.5 7.5 13 10.5 12 14Z"
+                  fill="#C9A227"
+                  fillOpacity="0.2"
+                  stroke="#C9A227"
+                />
+                <path d="M7 16.5C10 18 14 18 17 16.5" stroke="#C9A227" strokeWidth="1.5" />
+                <circle cx="12" cy="19" r="0.75" fill="#C9A227" />
+              </svg>
+              <div className="flex-1 h-[1px] bg-gradient-to-l from-transparent via-[#C9A227]/70 to-[#C9A227]" />
+            </div>
 
-            {/* Stretched Dual Action Buttons (Shifted down ~2 lines) */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-5 pt-6 sm:pt-8 md:pt-10 w-full max-w-sm sm:max-w-xl md:max-w-2xl mx-auto min-w-0">
-              <Link to="/consultation" className="w-full sm:flex-1 min-w-0">
+            {/* Centered Clean Zodiac Ring Emblem */}
+            <div className="w-[min(70vw,280px)] md:w-[340px] lg:w-[400px] aspect-square mx-auto my-6 md:my-8 shrink-0">
+              <ZodiacRingEmblem className="w-full h-full" color="#C9A227" />
+            </div>
+
+            {/* Dual Action Buttons (Full width stack on mobile, side-by-side on md+) */}
+            <div className="flex flex-col md:flex-row items-center justify-center gap-3 sm:gap-4 md:gap-5 w-full max-w-sm md:max-w-2xl mx-auto min-w-0">
+              <Link to="/consultation" className="w-full md:w-auto md:flex-1 min-w-0">
                 <Button
                   variant="cta"
                   size="lg"
@@ -235,19 +257,29 @@ export const Home: React.FC = () => {
                   <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
                 </Button>
               </Link>
-              <Link to="/courses" className="w-full sm:flex-1 min-w-0">
+              <Link to="/courses" className="w-full md:w-auto md:flex-1 min-w-0">
                 <Button
                   variant="outline-light"
                   size="lg"
-                  className="w-full min-h-[48px] py-3.5 sm:py-4 px-4 sm:px-6 text-sm sm:text-base font-semibold justify-center"
+                  className="w-full min-h-[48px] py-3.5 sm:py-4 px-4 sm:px-6 text-sm sm:text-base font-semibold gap-2 justify-center"
                 >
-                  Explore Sacred Courses
+                  <span>Explore Sacred Courses</span>
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
                 </Button>
               </Link>
             </div>
 
-            {/* Stretched Micro Highlights across width */}
-            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 md:gap-10 pt-4 sm:pt-6 text-xs sm:text-sm md:text-base text-ivory/90 font-medium hero-text-shadow w-full max-w-4xl mx-auto px-1">
+            {/* Stretched Tagline / Subtitle (Positioned below buttons) */}
+            {settings.hero_subtitle && (
+              <div className="max-w-4xl mx-auto w-full min-w-0 px-1 sm:px-2 pt-2 sm:pt-4">
+                <p className="text-xs min-[360px]:text-sm sm:text-base md:text-lg text-[#EFEAF8] leading-relaxed font-normal hero-text-shadow break-words">
+                  {settings.hero_subtitle}
+                </p>
+              </div>
+            )}
+
+            {/* Micro Highlights / Trust Points (Positioned below subtitle) */}
+            <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 md:gap-10 pt-2 sm:pt-3 text-xs sm:text-sm md:text-base text-ivory/90 font-medium hero-text-shadow w-full max-w-4xl mx-auto px-1">
               <span className="inline-flex items-center gap-1.5 sm:gap-2">
                 <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-accent shrink-0" />
                 <span>No Superstitious Fears</span>
@@ -455,7 +487,7 @@ export const Home: React.FC = () => {
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-                  <span>Custom Vedic remedies without commercial exploitation</span>
+                  <span>Personalised powerful and effective remedies</span>
                 </div>
               </div>
             </div>
