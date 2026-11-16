@@ -319,11 +319,11 @@ export const Consultation: React.FC = () => {
               {[1, 2, 3, 4].map((i) => (
                 <div
                   key={i}
-                  className="bg-white/90 rounded-2xl sm:rounded-3xl border border-secondary/15 p-6 sm:p-8 animate-pulse space-y-4"
+                  className="bg-gradient-to-br from-[#1E1B4B]/80 to-[#2E2A5C]/80 rounded-2xl sm:rounded-3xl border-2 border-[#C9A227]/40 p-6 sm:p-8 animate-pulse space-y-4"
                 >
-                  <div className="h-6 bg-mist rounded-md w-1/2" />
-                  <div className="h-4 bg-mist rounded-md w-3/4" />
-                  <div className="h-24 bg-mist/60 rounded-xl" />
+                  <div className="h-6 bg-white/20 rounded-md w-1/2" />
+                  <div className="h-4 bg-white/10 rounded-md w-3/4" />
+                  <div className="h-24 bg-white/10 rounded-xl" />
                 </div>
               ))}
             </div>
@@ -333,30 +333,30 @@ export const Consultation: React.FC = () => {
                 {consultation.services.map((service) => (
                   <div
                     key={service.id}
-                    className="bg-white/95 rounded-2xl sm:rounded-3xl border border-secondary/20 p-6 sm:p-8 shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+                    className="bg-gradient-to-br from-[#1E1B4B] via-[#2E2A5C] to-[#251A4A] rounded-2xl sm:rounded-3xl border-2 border-[#C9A227] p-6 sm:p-8 shadow-lg shadow-[#1E1B4B]/25 hover:shadow-2xl transition-all flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-start justify-between gap-2 mb-3">
-                        <h3 className="font-heading text-xl sm:text-2xl font-bold text-primary">
+                        <h3 className="font-heading text-xl sm:text-2xl font-bold text-white tracking-tight">
                           {service.title}
                         </h3>
                         {service.badge && (
-                          <span className="bg-secondary text-ivory text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 rounded-full shrink-0">
+                          <span className="bg-[#C9A227] text-[#1E1B4B] text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0 uppercase tracking-wider shadow-xs">
                             {service.badge}
                           </span>
                         )}
                       </div>
-                      <p className="text-ink/80 text-xs sm:text-sm leading-relaxed mb-4">
+                      <p className="text-white/90 text-xs sm:text-sm leading-relaxed mb-4 font-normal">
                         {service.description}
                       </p>
 
-                      <div className="space-y-2 border-t border-mist pt-4 mb-6">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">
+                      <div className="space-y-2.5 border-t border-[#C9A227]/30 pt-4 mb-6">
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#C9A227]">
                           Key Inclusions:
                         </p>
                         {service.deliverables.map((item, i) => (
-                          <div key={i} className="flex items-start gap-2 text-xs sm:text-sm text-ink/85">
-                            <CheckCircle className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
+                          <div key={i} className="flex items-start gap-2 text-xs sm:text-sm text-white font-normal">
+                            <CheckCircle className="w-4 h-4 text-[#C9A227] shrink-0 mt-0.5" />
                             <span>{item}</span>
                           </div>
                         ))}
@@ -366,12 +366,14 @@ export const Consultation: React.FC = () => {
                     <div className="pt-2">
                       <Button
                         type="button"
-                        variant="outline"
+                        variant="outline-light"
                         size="sm"
                         onClick={handleBookAndPay}
-                        className="w-full text-xs py-2 sm:py-2.5 border-secondary/30 text-secondary hover:bg-mist"
+                        className="w-full py-2.5 sm:py-3 !border-2 !border-[#C9A227] !text-white bg-white/5 hover:!bg-[#C9A227] hover:!text-[#1E1B4B] text-xs sm:text-sm font-semibold rounded-full flex items-center justify-center gap-2 transition-all shadow-xs"
                       >
-                        Select This Service
+                        <span>Select This Service</span>
+                        <span className="text-[#C9A227] group-hover:text-inherit">•</span>
+                        <span className="font-bold">₹5,100</span>
                       </Button>
                     </div>
                   </div>

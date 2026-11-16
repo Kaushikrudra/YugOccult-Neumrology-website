@@ -282,15 +282,15 @@ export const Home: React.FC = () => {
             <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-6 md:gap-10 pt-2 sm:pt-3 text-xs sm:text-sm md:text-base text-ivory/90 font-medium hero-text-shadow w-full max-w-4xl mx-auto px-1">
               <span className="inline-flex items-center gap-1.5 sm:gap-2">
                 <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-accent shrink-0" />
-                <span>No Superstitious Fears</span>
+                <span>Powerful Solution</span>
               </span>
               <span className="inline-flex items-center gap-1.5 sm:gap-2">
                 <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-accent shrink-0" />
-                <span>100% Confidential</span>
+                <span>100% Effective Remedies</span>
               </span>
               <span className="inline-flex items-center gap-1.5 sm:gap-2">
                 <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-accent shrink-0" />
-                <span>Practical Solutions</span>
+                <span>Practical Guidance</span>
               </span>
             </div>
           </div>

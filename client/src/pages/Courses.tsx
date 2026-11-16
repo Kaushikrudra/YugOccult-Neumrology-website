@@ -306,7 +306,7 @@ export const Courses: React.FC = () => {
           <SectionHeading
             eyebrow="Certified Sacred Academy"
             title="Astrology, Numerology & Tarot Courses"
-            subtitle="Explore our comprehensive curriculum of authentic shastric programs, practical remedies, and transformative bundle packages guided by Anushka Yadav."
+            subtitle="Explore our comprehensive curriculum of authentic cources and programs, practical remedies, and transformative bundle packages guided by Anushka Yadav."
           />
 
           {/* Search Box */}
@@ -539,7 +539,7 @@ export const Courses: React.FC = () => {
                 Recognized Certification
               </h4>
               <p className="text-xs sm:text-sm text-ink/75 leading-relaxed">
-                Receive an authentic certificate recognizing your accomplishment upon passing the course evaluation.
+                Receive an authentic certificate recognizing your accomplishment of course.
               </p>
             </div>
           </div>
