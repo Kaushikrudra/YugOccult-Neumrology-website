@@ -503,7 +503,7 @@ export const Courses: React.FC = () => {
           <SectionHeading
             eyebrow="Pedagogical Standard"
             title="Why Learn With Anushka Yadav?"
-            subtitle="Classical traditional lineage wisdom combined with modern clinical calculations and ethical guidance."
+            subtitle="Classical traditional lineage wisdom combined with modern calculations and ethical guidance."
           />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 sm:gap-8">
