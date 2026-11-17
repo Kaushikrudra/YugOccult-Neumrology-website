@@ -157,9 +157,9 @@ export const Consultation: React.FC = () => {
       {settings.about_bio && settings.about_bio.trim() !== '' && (
         <section className="bg-mist/70 py-10 sm:py-16 border-y border-secondary/15">
           <Container className="max-w-7xl">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
               {/* Visual Portrait Card */}
-              <div className="lg:col-span-5 flex justify-center">
+              <div className="lg:col-span-5 flex justify-center lg:sticky lg:top-24">
                 <div className="relative w-full max-w-sm lg:max-w-md rounded-2xl sm:rounded-3xl bg-gradient-to-b from-[#1E1B4B] via-[#2E2A5C] to-[#1E1B4B] p-6 sm:p-7 border border-[#C9A227]/35 shadow-xl text-center text-ivory">
                   {/* Portrait Photo Frame with Double Gold Borders & Centered Badge */}
                   {photoSrc ? (
@@ -175,8 +175,8 @@ export const Consultation: React.FC = () => {
                           className="w-full h-full object-cover object-[center_20%]"
                         />
                       </div>
-                      {/* Vedic Jyotish Gold Badge Half-Overlapping Bottom Edge */}
-                      <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#C9A227] text-[#1E1B4B] text-[10px] font-bold px-3.5 py-1 rounded-full shadow-md uppercase tracking-wider whitespace-nowrap z-10 border border-[#1E1B4B]">
+                      {/* Vedic Jyotish Gold Badge positioned higher */}
+                      <span className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-[#C9A227] text-[#1E1B4B] text-[10px] font-bold px-3.5 py-1 rounded-full shadow-md uppercase tracking-wider whitespace-nowrap z-10 border border-[#1E1B4B]">
                         Vedic Jyotish
                       </span>
                     </div>
@@ -211,7 +211,7 @@ export const Consultation: React.FC = () => {
                           />
                         </svg>
                       </div>
-                      <span className="absolute bottom-1 right-1 bg-accent text-[#1E1B4B] text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs uppercase border border-[#1E1B4B]">
+                      <span className="absolute bottom-2 right-2 bg-accent text-[#1E1B4B] text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs uppercase border border-[#1E1B4B]">
                         Vedic Jyotish
                       </span>
                     </div>
