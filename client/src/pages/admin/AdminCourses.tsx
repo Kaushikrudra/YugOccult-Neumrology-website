@@ -1462,7 +1462,7 @@ export const AdminCourses: React.FC = () => {
                       Feature on Home Page
                     </span>
                     <span className="text-[11px] text-[#2B2A3D]/60 block">
-                      Prominently showcases this course in the 9 featured slots (3x3 grid) on the landing page.
+                      Prominently showcases this course in the featured section on the landing page (max 9 courses in a 3-column grid).
                     </span>
                   </div>
                 </label>

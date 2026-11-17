@@ -95,9 +95,8 @@ export const Home: React.FC = () => {
 
   const featuredCourses = useMemo(() => {
     const feat = courses.filter((c) => c.is_visible !== false && c.is_featured)
-    if (feat.length >= 9) return feat.slice(0, 9)
-    const remaining = courses.filter((c) => c.is_visible !== false && !c.is_featured)
-    return [...feat, ...remaining].slice(0, 9)
+    if (feat.length > 0) return feat.slice(0, 9)
+    return courses.filter((c) => c.is_visible !== false).slice(0, 9)
   }, [courses])
 
   const totalVisibleCourses = useMemo(() => {
