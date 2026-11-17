@@ -57,7 +57,7 @@ export const homeAboutData: HomeAboutData = {
     },
   },
   closingQuote:
-    'Your destiny is not written in stone—it is a sacred symphony of planetary rhythms, numerical vibrations, and intuitive wisdom. Through Vedic astrology, sacred numerology, tarot insight, and vastu harmony, you awaken the power to transform every challenge into purposeful growth and consciously shape the life you truly desire.',
+    'Your destiny is a sacred harmony of planetary rhythms, numerical vibrations, and intuitive wisdom. Through Vedic astrology, numerology, tarot, and vastu, you awaken the inner power to consciously shape the life you truly desire.',
   primaryCtaText: 'Book Consultation',
   primaryCtaLink: '/consultation',
   secondaryCtaText: 'Explore Courses',
