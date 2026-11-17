@@ -57,7 +57,7 @@ export const homeAboutData: HomeAboutData = {
     },
   },
   closingQuote:
-    'Discover your path. Align your energies. Create the life you truly desire — with Anushkaa Yadav by your side.',
+    'Your destiny is not written in stone—it is a sacred symphony of planetary rhythms, numerical vibrations, and intuitive wisdom. Through Vedic astrology, sacred numerology, tarot insight, and vastu harmony, you awaken the power to transform every challenge into purposeful growth and consciously shape the life you truly desire.',
   primaryCtaText: 'Book Consultation',
   primaryCtaLink: '/consultation',
   secondaryCtaText: 'Explore Courses',

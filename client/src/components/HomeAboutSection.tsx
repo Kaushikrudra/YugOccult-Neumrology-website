@@ -143,22 +143,49 @@ export const HomeAboutSection: React.FC = () => {
         </div>
 
         {/* Closing Quote Band & Dual CTAs */}
-        <div className="rounded-2xl sm:rounded-3xl bg-mist/90 border border-secondary/20 p-8 sm:p-10 md:p-12 text-center max-w-4xl mx-auto shadow-xs">
-          <Quote className="w-8 h-8 text-[#C9A227] mx-auto mb-4 opacity-80" />
-          <blockquote className="font-heading text-lg sm:text-xl md:text-2xl italic font-semibold text-primary leading-relaxed mb-6 sm:mb-8">
-            &ldquo;{homeAboutData.closingQuote}&rdquo;
-          </blockquote>
-          <div className="flex items-center justify-center">
-            <Link to={homeAboutData.secondaryCtaLink} className="w-full sm:w-auto">
-              <Button
-                variant="cta"
-                size="md"
-                className="w-full sm:w-auto px-8 py-3.5 font-semibold shadow-md gap-2"
-              >
-                <span>{homeAboutData.secondaryCtaText}</span>
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#1E1B4B] via-[#2E2A5C] to-[#251A4A] border-2 border-[#C9A227] p-8 sm:p-12 md:p-14 text-center max-w-4xl mx-auto shadow-2xl">
+          {/* Subtle Celestial Ambient Glow */}
+          <div
+            className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_center,_rgba(201,162,39,0.15)_0%,_transparent_75%)]"
+            aria-hidden="true"
+          />
+
+          <div className="relative z-10 space-y-5 sm:space-y-6">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 border border-[#C9A227]/40 text-[#C9A227] text-xs font-semibold tracking-wider uppercase">
+              <Sparkles className="w-3.5 h-3.5 text-[#C9A227]" />
+              <span>Sacred Guidance &amp; Wisdom</span>
+            </div>
+
+            <Quote className="w-10 h-10 text-[#C9A227] mx-auto opacity-90 drop-shadow-sm" />
+
+            <blockquote className="font-heading text-lg sm:text-xl md:text-2xl text-white font-medium leading-relaxed max-w-3xl mx-auto">
+              &ldquo;{homeAboutData.closingQuote}&rdquo;
+            </blockquote>
+
+            {/* Attribution */}
+            <div className="pt-2 flex flex-col items-center justify-center">
+              <div className="h-0.5 w-16 bg-gradient-to-r from-transparent via-[#C9A227] to-transparent mb-2.5" />
+              <p className="font-heading text-base sm:text-lg font-bold text-[#C9A227] tracking-wide">
+                — Written by Anushka Yadav
+              </p>
+              <p className="text-[11px] sm:text-xs text-white/75 uppercase tracking-wider mt-0.5 font-medium">
+                Founder &amp; Mentor, Yug Skill Institute
+              </p>
+            </div>
+
+            {/* CTA Button */}
+            <div className="pt-3 flex items-center justify-center">
+              <Link to={homeAboutData.secondaryCtaLink} className="w-full sm:w-auto">
+                <Button
+                  variant="cta"
+                  size="lg"
+                  className="w-full sm:w-auto px-8 py-3.5 font-semibold shadow-lg shadow-cta/30 gap-2 text-sm sm:text-base"
+                >
+                  <span>{homeAboutData.secondaryCtaText}</span>
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </Container>
