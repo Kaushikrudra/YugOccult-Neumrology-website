@@ -95,8 +95,9 @@ export const Home: React.FC = () => {
 
   const featuredCourses = useMemo(() => {
     const feat = courses.filter((c) => c.is_visible !== false && c.is_featured)
-    if (feat.length > 0) return feat.slice(0, 8)
-    return courses.filter((c) => c.is_visible !== false).slice(0, 8)
+    if (feat.length >= 9) return feat.slice(0, 9)
+    const remaining = courses.filter((c) => c.is_visible !== false && !c.is_featured)
+    return [...feat, ...remaining].slice(0, 9)
   }, [courses])
 
   const totalVisibleCourses = useMemo(() => {
@@ -339,7 +340,7 @@ export const Home: React.FC = () => {
             subtitle="Learn time-tested astrological techniques and master numerology directly from structured curricula."
           />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
             {featuredCourses.map((course) => (
               <CourseCard
                 key={course.id || course.slug}
