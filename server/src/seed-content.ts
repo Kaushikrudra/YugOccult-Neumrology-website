@@ -157,6 +157,18 @@ const COURSES_CATALOG: CourseSeedItem[] = [
     description: 'Mohini Vidhya Special Course focusing on traditional astrological magnetism and attraction sciences, from basic to advanced.',
     position: 10,
   },
+  {
+    slug: 'vedic-astrology-course-basic-to-advanced',
+    title: 'Vedic Astrology Course Basic to Advanced',
+    category: 'Astrology',
+    price: 20000,
+    original_price: 39999,
+    level: 'Basic to Advanced',
+    is_package: false,
+    is_featured: true,
+    description: 'Master classical Vedic Astrology from foundational planetary grammar to advanced Kundali chart reading, bhavas, yogas, dasha periods, and traditional remedies.',
+    position: 30,
+  },
 
   // ==========================================
   // NUMEROLOGY (Positions 11-15)
@@ -220,6 +232,18 @@ const COURSES_CATALOG: CourseSeedItem[] = [
     is_featured: false,
     description: 'Company Name Correction Report providing numerological commercial brand alignment and business name optimization.',
     position: 15,
+  },
+  {
+    slug: 'loshu-grid-numerology-basic-to-advanced',
+    title: 'Loshu Grid Numerology Basic to Advanced',
+    category: 'Numerology',
+    price: 15000,
+    original_price: 29999,
+    level: 'Basic to Advanced',
+    is_package: false,
+    is_featured: true,
+    description: 'Comprehensive Loshu Grid Numerology program covering the sacred 3x3 grid, plane analysis, missing and repetitive numbers, arrow combinations, and practical remedies.',
+    position: 31,
   },
 
   // ==========================================
