@@ -6,6 +6,7 @@ import {
   Award,
   Info,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react'
 import Container from '../components/Container'
 import Button from '../components/Button'
@@ -244,57 +245,114 @@ export const Consultation: React.FC = () => {
               </div>
 
               {/* About Narrative & Philosophy */}
-              <div className="lg:col-span-7 flex flex-col justify-between space-y-4 sm:space-y-5">
-                <div className="space-y-4 sm:space-y-4.5">
+              <div className="lg:col-span-7 flex flex-col justify-between space-y-5 sm:space-y-6">
+                <div className="space-y-5">
                   <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-xs font-semibold uppercase tracking-wider text-secondary">
-                    <Award className="w-3.5 h-3.5 text-accent" />
-                    <span>Lineage &amp; Credentials</span>
+                    <Sparkles className="w-3.5 h-3.5 text-accent" />
+                    <span>Guiding Lives • Transforming Destinies • Empowering Souls</span>
                   </div>
 
-                  <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-primary leading-tight">
-                    Authentic Wisdom Backed by Classical Shastras
-                  </h2>
-
-                  <div className="text-ink/80 text-xs sm:text-base leading-relaxed space-y-3">
-                    <p className="whitespace-pre-line">{settings.about_bio}</p>
-                    <p>
-                      Whether navigating career transitions, relationship harmonies, or personal growth cycles, consultations are focused on actionable clarity. We do not prescribe fear-based rituals or expensive gemstones; instead, we emphasize classical Vedic remedies, karma alignment, mindful lifestyle adjustments, and practical timing to empower conscious free will.
+                  <div>
+                    <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-primary leading-tight">
+                      Meet Your Mentor – Astrology, Numerology &amp; Holistic Transformation
+                    </h2>
+                    <p className="text-xs sm:text-sm font-semibold text-accent uppercase tracking-wider mt-1.5">
+                      Guiding Lives. Transforming Destinies. Empowering Souls.
                     </p>
                   </div>
 
-                  {/* Certifications and Pillars (Rendered as 6 shastra-backed pillars) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 pt-2">
-                    {[
-                      ...(settings.about_credentials && settings.about_credentials.length > 0
-                        ? settings.about_credentials
-                        : [
-                            'Certified Jyotish Acharya & Vastu Shastra Consultant',
-                            'Member of Recognized Indian Vedic Astrology Councils',
-                            'Zero Fear-Mongering, Guilt, or Costly Superstitions',
-                            'Strict Client Privacy & Lifelong Confidentiality',
-                          ]),
-                      '10,000+ Individual & Family Charts Analyzed',
-                      'Actionable Remedies Rooted in Classical Shastras',
-                    ]
-                      .filter((item, index, arr) => arr.indexOf(item) === index)
-                      .slice(0, 6)
-                      .map((cred, idx) => (
-                        <div key={idx} className="flex items-start gap-2.5">
-                          <CheckCircle className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-secondary shrink-0 mt-0.5" />
-                          <span className="text-xs sm:text-sm text-ink/90 font-medium">
-                            {cred}
-                          </span>
-                        </div>
-                      ))}
+                  <div className="text-ink/85 text-xs sm:text-base leading-relaxed space-y-3">
+                    <p className="font-semibold text-primary text-sm sm:text-lg">
+                      Welcome to Yug Skill Institute!
+                    </p>
+                    <p>
+                      I am a dedicated Astrologer, Numerologist, Tarot Card Reader, Vastu Consultant, Life Coach, Counsellor, and Holistic Healer, passionate about helping individuals discover their true potential, overcome life&apos;s challenges, and move towards a more balanced, successful, and fulfilling life.
+                    </p>
+                    <p>
+                      With over <strong>6+ years of professional experience</strong> in astrology, numerology, tarot reading, Vastu, counselling, and spiritual guidance, I have had the privilege of training and empowering <strong>21,000+ students</strong> through my knowledge, practical expertise, and personalized guidance.
+                    </p>
+                  </div>
+
+                  {/* My Expertise & Services */}
+                  <div className="space-y-3 pt-2">
+                    <h3 className="font-heading text-lg sm:text-xl font-bold text-primary flex items-center gap-2">
+                      <Award className="w-4 h-4 text-accent" />
+                      <span>My Expertise &amp; Services</span>
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 text-xs sm:text-sm text-ink/90">
+                      <div className="flex items-start gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
+                        <span><strong>Vedic Astrology:</strong> Understanding planetary influences, Kundali analysis, career, marriage, relationships, finance, and life direction.</span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
+                        <span><strong>Numerology:</strong> Birth number analysis, destiny numbers, name numerology, and personal vibration guidance.</span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
+                        <span><strong>Tarot Card Reading:</strong> Intuitive readings and meaningful insights to help navigate life&apos;s important decisions.</span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
+                        <span><strong>Vastu Consultation:</strong> Creating harmonious and positive living and working environments.</span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
+                        <span><strong>Life Coaching:</strong> Helping individuals build confidence, clarity, discipline, and achieve their personal and professional goals.</span>
+                      </div>
+                      <div className="flex items-start gap-2.5">
+                        <CheckCircle className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
+                        <span><strong>Counselling &amp; Guidance:</strong> Offering compassionate support for emotional challenges, relationships, career decisions, and personal growth.</span>
+                      </div>
+                      <div className="flex items-start gap-2.5 sm:col-span-2">
+                        <CheckCircle className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
+                        <span><strong>Holistic Healing:</strong> Personalized spiritual practices and remedies to encourage positivity, inner balance, and personal transformation.</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* My Mission */}
+                  <div className="space-y-2.5 pt-2 border-t border-secondary/15">
+                    <h3 className="font-heading text-lg sm:text-xl font-bold text-primary flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-accent" />
+                      <span>My Mission</span>
+                    </h3>
+                    <p className="text-xs sm:text-sm font-semibold text-secondary leading-relaxed">
+                      My mission is not just to predict the future but to empower people to create a better one.
+                    </p>
+                    <p className="text-xs sm:text-sm text-ink/80 leading-relaxed">
+                      I believe that every individual deserves clarity, confidence, and the right guidance to make informed decisions in life. Through the combined wisdom of astrology, numerology, tarot, Vastu, coaching, and healing practices, I aim to help people understand themselves better and unlock their hidden potential.
+                    </p>
+                    <p className="text-xs sm:text-sm text-ink/80 leading-relaxed">
+                      Whether you are facing career uncertainties, relationship challenges, financial concerns, emotional struggles, or seeking spiritual growth, I am here to guide you with personalized attention, practical insights, and a compassionate approach.
+                    </p>
                   </div>
                 </div>
 
-                {/* Sacred Consultation Ethos Highlight Box */}
-                <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl bg-white/80 border border-secondary/15 flex items-start gap-3 shadow-2xs mt-2">
-                  <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-accent shrink-0 mt-0.5" />
-                  <p className="text-xs sm:text-sm text-ink/80 italic leading-relaxed">
-                    &ldquo;Astrology does not lock your fate into stone—it reveals the energetic weather of your life so you can navigate every season with wisdom, poise, and conscious action.&rdquo;
+                {/* My Promise to You & Sign-off Card */}
+                <div className="p-4 sm:p-6 rounded-2xl bg-white/90 border border-secondary/20 shadow-xs space-y-3 mt-4">
+                  <h3 className="font-heading text-base sm:text-lg font-bold text-primary flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-accent" />
+                    <span>My Promise to You</span>
+                  </h3>
+                  <p className="text-xs sm:text-sm font-semibold text-secondary">
+                    Your journey matters. Your growth matters. Your transformation matters.
                   </p>
+                  <p className="text-xs sm:text-sm text-ink/85 leading-relaxed">
+                    I believe in ethical guidance, client confidentiality, personalized solutions, and empowering people without creating fear or dependency.
+                  </p>
+                  <p className="text-xs sm:text-sm text-ink/85 leading-relaxed">
+                    Let&apos;s work together to bring clarity to your life, confidence to your decisions, and positivity to your journey.
+                  </p>
+                  <div className="pt-3 border-t border-secondary/15 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <p className="text-xs sm:text-sm font-semibold italic text-primary">
+                      &ldquo;With Wisdom, Guidance &amp; Healing – Let&apos;s Transform Lives Together.&rdquo;
+                    </p>
+                    <div className="text-left sm:text-right shrink-0">
+                      <p className="text-[11px] text-ink/65 uppercase tracking-wider font-semibold">Founder of Yug Skill Institute</p>
+                      <p className="font-heading font-bold text-base sm:text-lg text-primary">Anushka Yadav</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

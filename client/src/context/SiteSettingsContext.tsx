@@ -64,7 +64,7 @@ const defaultSettings: SiteSettings = {
   about_name: 'Anushka Yadav',
   about_title: 'Occult Master Astrologer, Numerologist & Tarot Guide',
   about_bio:
-    "Welcome to YugSkills Learning Institute. My mission is to demystify Indian astrology and numerological science from superstitious exploitation. Astrology is an illuminating lantern—a divine science ('Jyotir-Isha') designed to illuminate the path ahead, identify planetary timings, and empower conscious free will.\n\nHaving studied under traditional Gurukul lineages and verified thousands of real-life horoscopes, every reading combines rigorous mathematical accuracy (Parashari, Jaimini, and Chaldean grids) with compassionate, ethical life advice.",
+    "Welcome to Yug Skill Institute!\n\nI am a dedicated Astrologer, Numerologist, Tarot Card Reader, Vastu Consultant, Life Coach, Counsellor, and Holistic Healer, passionate about helping individuals discover their true potential, overcome life's challenges, and move towards a more balanced, successful, and fulfilling life.\n\nWith over 6+ years of professional experience in astrology, numerology, tarot reading, Vastu, counselling, and spiritual guidance, I have had the privilege of training and empowering 21,000+ students through my knowledge, practical expertise, and personalized guidance.",
   about_expertise: [
     'Vedic Astrology',
     'Chaldean Numerology',
