@@ -166,7 +166,7 @@ export const HomeAboutSection: React.FC = () => {
             <div className="pt-1 flex flex-col items-center justify-center">
               <div className="h-0.5 w-12 bg-gradient-to-r from-transparent via-[#C9A227] to-transparent mb-1.5" />
               <p className="font-heading text-sm sm:text-base font-bold text-[#C9A227] tracking-wide">
-                — Written by Anushka Yadav
+                — by Anushka Yadav
               </p>
               <p className="text-[10px] sm:text-xs text-white/70 uppercase tracking-wider mt-0.5 font-medium">
                 Founder &amp; Mentor, Yug Skill Institute
