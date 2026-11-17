@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import {
   BookOpen,
   RefreshCw,
@@ -17,6 +17,7 @@ import {
   Plus,
   Edit2,
   Download,
+  Search,
 } from 'lucide-react'
 import {
   DndContext,
@@ -217,6 +218,41 @@ export const AdminCourses: React.FC = () => {
   const [courses, setCourses] = useState<CourseItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Search and Category Filter State
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
+
+  // Categories list derived from courses
+  const categories = useMemo(() => {
+    const cats = new Set<string>()
+    courses.forEach((c) => {
+      if (c.category && c.category.trim()) {
+        cats.add(c.category.trim())
+      }
+    })
+    return ['all', ...Array.from(cats)]
+  }, [courses])
+
+  // Filtered courses based on search query and category
+  const filteredCourses = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    return courses.filter((c) => {
+      const matchesCategory =
+        selectedCategory === 'all' ||
+        (c.category && c.category.trim().toLowerCase() === selectedCategory.toLowerCase())
+
+      if (!matchesCategory) return false
+      if (!q) return true
+
+      const titleMatch = c.title?.toLowerCase().includes(q)
+      const catMatch = c.category?.toLowerCase().includes(q)
+      const descMatch = c.description?.toLowerCase().includes(q)
+      const instrMatch = c.instructor?.toLowerCase().includes(q)
+      const levelMatch = c.level?.toLowerCase().includes(q)
+      return Boolean(titleMatch || catMatch || descMatch || instrMatch || levelMatch)
+    })
+  }, [courses, searchQuery, selectedCategory])
 
   // Drawer / Modal for Course Materials
   const [activeCourse, setActiveCourse] = useState<CourseItem | null>(null)
@@ -645,6 +681,77 @@ export const AdminCourses: React.FC = () => {
         </div>
       )}
 
+      {/* Search & Filter Bar */}
+      <div className="bg-white rounded-2xl border border-[#5B3E96]/15 p-3.5 sm:p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        {/* Search Input */}
+        <div className="relative flex-1 max-w-lg">
+          <Search className="w-4 h-4 text-[#5B3E96]/60 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search courses by title, category, instructor, or description..."
+            className="w-full pl-9 pr-9 py-2 rounded-xl border border-[#5B3E96]/20 bg-[#FAF7FD]/50 hover:bg-white focus:bg-white text-xs sm:text-sm text-[#2E2A5C] placeholder:text-[#2B2A3D]/40 focus:outline-none focus:ring-2 focus:ring-[#5B3E96]/30 transition-all"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#2B2A3D]/40 hover:text-[#2E2A5C] rounded-md transition-colors"
+              title="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Category & Status Filters */}
+        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap justify-between md:justify-end">
+          {categories.length > 2 && (
+            <div className="flex items-center gap-1.5 text-xs">
+              <span className="text-[#2B2A3D]/60 font-medium hidden sm:inline">Category:</span>
+              <select
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+                className="px-3 py-2 rounded-xl border border-[#5B3E96]/20 bg-white text-xs text-[#2E2A5C] font-medium focus:outline-none focus:ring-2 focus:ring-[#5B3E96]/30 cursor-pointer"
+              >
+                <option value="all">All Categories ({courses.length})</option>
+                {categories
+                  .filter((cat) => cat !== 'all')
+                  .map((cat) => {
+                    const count = courses.filter(
+                      (c) => c.category?.trim().toLowerCase() === cat.toLowerCase()
+                    ).length
+                    return (
+                      <option key={cat} value={cat}>
+                        {cat} ({count})
+                      </option>
+                    )
+                  })}
+              </select>
+            </div>
+          )}
+
+          <div className="text-xs font-semibold text-[#5B3E96] bg-[#EFEAF8] px-3 py-2 rounded-xl whitespace-nowrap">
+            {filteredCourses.length} {filteredCourses.length === 1 ? 'Course' : 'Courses'}
+            {(searchQuery || selectedCategory !== 'all') && ` (of ${courses.length})`}
+          </div>
+
+          {(searchQuery || selectedCategory !== 'all') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('')
+                setSelectedCategory('all')
+              }}
+              className="text-xs text-[#2B2A3D]/60 hover:text-[#5B3E96] underline underline-offset-2 transition-colors whitespace-nowrap"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Courses List Grid */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -655,9 +762,43 @@ export const AdminCourses: React.FC = () => {
             />
           ))}
         </div>
+      ) : filteredCourses.length === 0 ? (
+        <div className="py-16 text-center bg-white rounded-3xl border border-[#5B3E96]/15 p-8 flex flex-col items-center justify-center">
+          <div className="w-12 h-12 rounded-2xl bg-[#EFEAF8] flex items-center justify-center mb-3">
+            <Search className="w-6 h-6 text-[#5B3E96]" />
+          </div>
+          <h3 className="font-heading text-lg font-bold text-[#2E2A5C] mb-1">
+            {courses.length === 0 ? 'No Courses Available' : 'No matching courses found'}
+          </h3>
+          <p className="text-xs text-[#2B2A3D]/70 max-w-sm mb-4">
+            {courses.length === 0
+              ? 'Get started by creating your first course syllabus and study materials.'
+              : `No courses matched your search "${searchQuery}". Try a different keyword or reset filters.`}
+          </p>
+          {courses.length === 0 ? (
+            <button
+              onClick={handleOpenAddCourse}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#2E2A5C] hover:bg-[#3C3775] text-[#FBF7EE] text-xs font-semibold shadow-sm transition-colors"
+            >
+              <Plus className="w-4 h-4 text-[#C9A227]" />
+              <span>Add First Course</span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery('')
+                setSelectedCategory('all')
+              }}
+              className="px-4 py-2 rounded-xl bg-[#5B3E96]/10 hover:bg-[#5B3E96]/20 text-[#5B3E96] text-xs font-semibold transition-colors"
+            >
+              Clear Search &amp; Filters
+            </button>
+          )}
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {courses.map((course) => (
+          {filteredCourses.map((course) => (
             <div
               key={course.id}
               className="bg-white rounded-3xl border border-[#5B3E96]/15 p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between overflow-hidden"
