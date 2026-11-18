@@ -254,10 +254,10 @@ export const Consultation: React.FC = () => {
 
                   <div>
                     <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-primary leading-tight">
-                      Meet Your Mentor – Astrology, Numerology &amp; Holistic Transformation
+                      Meet Your Mentor Anushka Yadav
                     </h2>
-                    <p className="text-xs sm:text-sm font-semibold text-accent uppercase tracking-wider mt-1.5">
-                      Guiding Lives. Transforming Destinies. Empowering Souls.
+                    <p className="text-sm sm:text-base font-semibold text-accent tracking-wide mt-1.5">
+                      Ready for Astrology, Numerology &amp; Holistic Transformation
                     </p>
                   </div>
 
