@@ -249,15 +249,18 @@ export const Consultation: React.FC = () => {
                 <div className="space-y-5">
                   <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-secondary/10 border border-secondary/20 text-xs font-semibold uppercase tracking-wider text-secondary">
                     <Sparkles className="w-3.5 h-3.5 text-accent" />
-                    <span>Guiding Lives • Transforming Destinies • Empowering Souls</span>
+                    <span>Yug Skill Institute • Anushka Yadav</span>
                   </div>
 
                   <div>
                     <h2 className="text-2xl sm:text-3xl lg:text-4xl font-heading font-bold text-primary leading-tight">
                       Meet Your Mentor Anushka Yadav
                     </h2>
-                    <p className="text-sm sm:text-base font-semibold text-accent tracking-wide mt-1.5">
+                    <h3 className="text-lg sm:text-xl lg:text-2xl font-heading font-bold text-primary/90 mt-1 sm:mt-1.5 leading-snug">
                       Ready for Astrology, Numerology &amp; Holistic Transformation
+                    </h3>
+                    <p className="text-xs sm:text-sm font-semibold text-accent uppercase tracking-wider mt-2">
+                      Guiding Lives. Transforming Destinies. Empowering Souls.
                     </p>
                   </div>
 
