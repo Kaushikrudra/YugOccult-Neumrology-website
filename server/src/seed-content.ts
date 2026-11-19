@@ -701,7 +701,7 @@ async function seedContent() {
           title: 'Remedial Roadmap & Support',
           subtitle: 'Clear, Practical Solutions',
           description:
-            'Receive actionable Vedic remedies—gemstone guidance, mantra chanting, donations, or lifestyle modifications—tailored specifically to your karma.',
+            'Receive actionable Vedic remedies—gemstone guidance, mantra chanting, donations, or lifestyle modifications—tailored specifically to your birth chart.',
         },
       ]
 
