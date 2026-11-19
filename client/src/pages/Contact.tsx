@@ -226,7 +226,7 @@ export const Contact: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-accent shrink-0" />
                   <h3 className="font-heading text-xl sm:text-2xl font-bold text-ivory">
-                    YugSkills Learning institute
+                    YugSkills Institute
                   </h3>
                 </div>
                 <p className="text-ivory/80 text-xs sm:text-sm leading-relaxed">

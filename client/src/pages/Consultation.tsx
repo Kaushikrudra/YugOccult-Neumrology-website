@@ -377,7 +377,7 @@ export const Consultation: React.FC = () => {
 
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-              {[1, 2, 3, 4].map((i) => (
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div
                   key={i}
                   className="bg-gradient-to-br from-[#1E1B4B]/80 to-[#2E2A5C]/80 rounded-2xl sm:rounded-3xl border-2 border-[#C9A227]/40 p-6 sm:p-8 animate-pulse space-y-4"
@@ -407,13 +407,18 @@ export const Consultation: React.FC = () => {
                           </span>
                         )}
                       </div>
+                      {service.subtitle && (
+                        <p className="text-[#C9A227] text-xs sm:text-sm font-semibold tracking-wide mb-2">
+                          {service.subtitle}
+                        </p>
+                      )}
                       <p className="text-white/90 text-xs sm:text-sm leading-relaxed mb-4 font-normal">
                         {service.description}
                       </p>
 
                       <div className="space-y-2.5 border-t border-[#C9A227]/30 pt-4 mb-6">
                         <p className="text-[11px] font-semibold uppercase tracking-wider text-[#C9A227]">
-                          Key Inclusions:
+                          {service.inclusions_title || 'Key Inclusions:'}
                         </p>
                         {service.deliverables.map((item, i) => (
                           <div key={i} className="flex items-start gap-2 text-xs sm:text-sm text-white font-normal">
@@ -421,6 +426,11 @@ export const Consultation: React.FC = () => {
                             <span>{item}</span>
                           </div>
                         ))}
+                        {service.note && (
+                          <p className="mt-3 pt-2.5 border-t border-[#C9A227]/20 text-xs text-white/85 leading-relaxed font-normal">
+                            {service.note}
+                          </p>
+                        )}
                       </div>
                     </div>
 
@@ -432,9 +442,11 @@ export const Consultation: React.FC = () => {
                         onClick={handleBookAndPay}
                         className="w-full py-2.5 sm:py-3 !border-2 !border-[#C9A227] !text-white bg-white/5 hover:!bg-[#C9A227] hover:!text-[#1E1B4B] text-xs sm:text-sm font-semibold rounded-full flex items-center justify-center gap-2 transition-all shadow-xs"
                       >
-                        <span>Select This Service</span>
+                        <span>Book Consultation</span>
                         <span className="text-[#C9A227] group-hover:text-inherit">•</span>
-                        <span className="font-bold">₹5,100</span>
+                        <span className="font-bold">
+                          {service.price ? `₹${Number(service.price).toLocaleString('en-IN')}` : '₹5,100'}
+                        </span>
                       </Button>
                     </div>
                   </div>

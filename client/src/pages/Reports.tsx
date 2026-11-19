@@ -298,7 +298,7 @@ export const Reports: React.FC = () => {
                 Secure PDF Delivery
               </h4>
               <p className="text-xs text-ink/80 leading-relaxed">
-                Your polished, personalized PDF document is compiled and delivered directly to your WhatsApp and email within 24 to 48 hours.
+                Your polished, personalized PDF document is compiled and delivered directly to your WhatsApp and email within 2 to 7 business days.
               </p>
             </div>
           </div>

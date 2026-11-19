@@ -1559,28 +1559,33 @@ const ConsultationAdminSchema = z.object({
     .max(480, 'Duration cannot exceed 480 minutes'),
   services: z
     .array(
-      z.object({
-        id: z.string().optional(),
-        title: z
-          .string()
-          .trim()
-          .min(1, 'Service title is required')
-          .max(80, 'Service title must not exceed 80 characters'),
-        description: z
-          .string()
-          .trim()
-          .max(300, 'Service description must not exceed 300 characters'),
-        deliverables: z
-          .array(z.string().trim().max(200, 'Deliverable text max 200 characters'))
-          .optional()
-          .default([]),
-        badge: z
-          .string()
-          .trim()
-          .max(40, 'Badge max 40 characters')
-          .optional()
-          .transform((v) => v || undefined),
-      })
+      z
+        .object({
+          id: z.string().optional(),
+          title: z
+            .string()
+            .trim()
+            .min(1, 'Service title is required')
+            .max(80, 'Service title must not exceed 80 characters'),
+          subtitle: z.string().trim().max(150).optional(),
+          description: z
+            .string()
+            .trim()
+            .max(400, 'Service description must not exceed 400 characters'),
+          inclusions_title: z.string().trim().max(80).optional(),
+          deliverables: z
+            .array(z.string().trim().max(200, 'Deliverable text max 200 characters'))
+            .optional()
+            .default([]),
+          note: z.string().trim().max(300).optional(),
+          badge: z
+            .string()
+            .trim()
+            .max(40, 'Badge max 40 characters')
+            .optional()
+            .transform((v) => v || undefined),
+        })
+        .passthrough()
     )
     .max(12, 'Maximum 12 services allowed'),
   process_steps: z

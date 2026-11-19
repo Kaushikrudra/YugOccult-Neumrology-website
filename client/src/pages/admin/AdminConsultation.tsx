@@ -20,8 +20,12 @@ import { api } from '../../lib/api'
 interface ServiceItem {
   id?: string
   title: string
+  subtitle?: string
   description: string
   badge?: string
+  inclusions_title?: string
+  note?: string
+  price?: number
   deliverables: string[]
 }
 
