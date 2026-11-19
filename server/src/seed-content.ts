@@ -558,7 +558,7 @@ async function seedContent() {
       const initialConsultationServices = [
         {
           id: 'kundli-reading',
-          title: '01. COMPREHENSIVE VEDIC KUNDALI ANALYSIS',
+          title: 'COMPREHENSIVE VEDIC KUNDALI ANALYSIS',
           subtitle: "Discover Your Life's Path Through Vedic Astrology",
           description:
             'Understand your personality, life patterns, opportunities and challenges through an in-depth analysis of your birth chart.',
@@ -576,7 +576,7 @@ async function seedContent() {
         },
         {
           id: 'numerology-report',
-          title: '02. VEDIC NUMEROLOGY & NAME ALIGNMENT',
+          title: 'VEDIC NUMEROLOGY & NAME ALIGNMENT',
           subtitle: 'Unlock the Power of Your Numbers & Name',
           description:
             'Discover the traditional numerological significance of your birth date and name. Understand your personality, strengths and name vibrations through personalised Vedic numerology.',
@@ -595,7 +595,7 @@ async function seedContent() {
         },
         {
           id: 'career-marriage',
-          title: '03. CAREER, WEALTH & MARRIAGE ASTROLOGY',
+          title: 'CAREER, WEALTH & MARRIAGE ASTROLOGY',
           subtitle: 'Get Clarity on Career, Financial Growth & Relationships',
           description:
             'Explore important areas of your life through personalised Vedic astrology. Gain insights into professional opportunities, business potential, financial patterns and marriage prospects.',
@@ -614,7 +614,7 @@ async function seedContent() {
         },
         {
           id: 'vastu-consultation',
-          title: '04. VASTU SHASTRA CONSULTATION & SPACE HARMONISATION',
+          title: 'VASTU SHASTRA CONSULTATION & SPACE HARMONISATION',
           subtitle: 'Create a Balanced & Harmonious Living Environment',
           description:
             'Discover how traditional Vastu principles can help improve the planning and arrangement of your home, office or commercial property.',
@@ -634,7 +634,7 @@ async function seedContent() {
         },
         {
           id: 'tarot-guidance',
-          title: '05. TAROT CARD READING & PERSONAL GUIDANCE',
+          title: 'TAROT CARD READING & PERSONAL GUIDANCE',
           subtitle: 'Find Clarity, Explore Possibilities & Discover Your Next Step',
           description:
             'Get a personalised Tarot reading to explore your current circumstances, emotional patterns, opportunities and possible directions ahead.',
@@ -654,7 +654,7 @@ async function seedContent() {
         },
         {
           id: 'business-consultation',
-          title: '06. BUSINESS CONSULTATION & ASTROLOGICAL GUIDANCE',
+          title: 'BUSINESS CONSULTATION & ASTROLOGICAL GUIDANCE',
           subtitle: 'Unlock Business Opportunities & Growth Potential',
           description:
             'Get personalised insights into your business potential, partnerships, financial prospects and favourable periods through Vedic astrology and numerology.',

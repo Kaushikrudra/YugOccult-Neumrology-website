@@ -376,58 +376,58 @@ export const Consultation: React.FC = () => {
           />
 
           {loading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
               {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div
                   key={i}
-                  className="bg-gradient-to-br from-[#1E1B4B]/80 to-[#2E2A5C]/80 rounded-2xl sm:rounded-3xl border-2 border-[#C9A227]/40 p-6 sm:p-8 animate-pulse space-y-4"
+                  className="bg-gradient-to-br from-[#1E1B4B]/80 to-[#2E2A5C]/80 rounded-2xl border-2 border-[#C9A227]/40 p-5 sm:p-6 animate-pulse space-y-3"
                 >
-                  <div className="h-6 bg-white/20 rounded-md w-1/2" />
-                  <div className="h-4 bg-white/10 rounded-md w-3/4" />
-                  <div className="h-24 bg-white/10 rounded-xl" />
+                  <div className="h-5 bg-white/20 rounded-md w-1/2" />
+                  <div className="h-3.5 bg-white/10 rounded-md w-3/4" />
+                  <div className="h-20 bg-white/10 rounded-xl" />
                 </div>
               ))}
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6 sm:gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
                 {consultation.services.map((service) => (
                   <div
                     key={service.id}
-                    className="bg-gradient-to-br from-[#1E1B4B] via-[#2E2A5C] to-[#251A4A] rounded-2xl sm:rounded-3xl border-2 border-[#C9A227] p-6 sm:p-8 shadow-lg shadow-[#1E1B4B]/25 hover:shadow-2xl transition-all flex flex-col justify-between"
+                    className="bg-gradient-to-br from-[#1E1B4B] via-[#2E2A5C] to-[#251A4A] rounded-2xl border-2 border-[#C9A227] p-5 sm:p-6 shadow-md shadow-[#1E1B4B]/20 hover:shadow-xl transition-all flex flex-col justify-between"
                   >
                     <div>
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <h3 className="font-heading text-xl sm:text-2xl font-bold text-white tracking-tight">
-                          {service.title}
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <h3 className="font-heading text-base sm:text-lg font-bold text-white tracking-tight leading-snug">
+                          {service.title.replace(/^\d+[\.\s]+\s*/, '')}
                         </h3>
                         {service.badge && (
-                          <span className="bg-[#C9A227] text-[#1E1B4B] text-[10px] sm:text-xs font-bold px-2.5 py-0.5 rounded-full shrink-0 uppercase tracking-wider shadow-xs">
+                          <span className="bg-[#C9A227] text-[#1E1B4B] text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 uppercase tracking-wider shadow-xs">
                             {service.badge}
                           </span>
                         )}
                       </div>
                       {service.subtitle && (
-                        <p className="text-[#C9A227] text-xs sm:text-sm font-semibold tracking-wide mb-2">
+                        <p className="text-[#C9A227] text-xs font-semibold tracking-wide mb-1.5 leading-snug">
                           {service.subtitle}
                         </p>
                       )}
-                      <p className="text-white/90 text-xs sm:text-sm leading-relaxed mb-4 font-normal">
+                      <p className="text-white/90 text-xs leading-relaxed mb-3 font-normal">
                         {service.description}
                       </p>
 
-                      <div className="space-y-2.5 border-t border-[#C9A227]/30 pt-4 mb-6">
-                        <p className="text-[11px] font-semibold uppercase tracking-wider text-[#C9A227]">
+                      <div className="space-y-1.5 border-t border-[#C9A227]/30 pt-3 mb-4">
+                        <p className="text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider text-[#C9A227]">
                           {service.inclusions_title || 'Key Inclusions:'}
                         </p>
                         {service.deliverables.map((item, i) => (
-                          <div key={i} className="flex items-start gap-2 text-xs sm:text-sm text-white font-normal">
-                            <CheckCircle className="w-4 h-4 text-[#C9A227] shrink-0 mt-0.5" />
+                          <div key={i} className="flex items-start gap-1.5 text-xs text-white font-normal leading-snug">
+                            <CheckCircle className="w-3.5 h-3.5 text-[#C9A227] shrink-0 mt-0.5" />
                             <span>{item}</span>
                           </div>
                         ))}
                         {service.note && (
-                          <p className="mt-3 pt-2.5 border-t border-[#C9A227]/20 text-xs text-white/85 leading-relaxed font-normal">
+                          <p className="mt-2.5 pt-2 border-t border-[#C9A227]/20 text-[11px] sm:text-xs text-white/80 leading-relaxed font-normal">
                             {service.note}
                           </p>
                         )}
@@ -440,7 +440,7 @@ export const Consultation: React.FC = () => {
                         variant="outline-light"
                         size="sm"
                         onClick={handleBookAndPay}
-                        className="w-full py-2.5 sm:py-3 !border-2 !border-[#C9A227] !text-white bg-white/5 hover:!bg-[#C9A227] hover:!text-[#1E1B4B] text-xs sm:text-sm font-semibold rounded-full flex items-center justify-center gap-2 transition-all shadow-xs"
+                        className="w-full py-2 sm:py-2.5 !border-2 !border-[#C9A227] !text-white bg-white/5 hover:!bg-[#C9A227] hover:!text-[#1E1B4B] text-xs font-semibold rounded-full flex items-center justify-center gap-2 transition-all shadow-xs"
                       >
                         <span>Book Consultation</span>
                         <span className="text-[#C9A227] group-hover:text-inherit">•</span>
