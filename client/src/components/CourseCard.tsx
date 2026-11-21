@@ -208,12 +208,17 @@ export const CourseCard: React.FC<CourseCardProps> = ({
             <span className="truncate font-medium text-secondary">
               Instructor: {instructor}
             </span>
-            {duration && (
-              <span className="flex items-center gap-1 text-[11px] shrink-0">
-                <Clock className="w-3.5 h-3.5 text-accent shrink-0" />
-                <span>{duration}</span>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] font-semibold text-[#5B3E96] bg-[#EFEAF8] px-2 py-0.5 rounded-full">
+                1-Yr Access
               </span>
-            )}
+              {duration && (
+                <span className="hidden sm:flex items-center gap-1 text-[11px]">
+                  <Clock className="w-3.5 h-3.5 text-accent shrink-0" />
+                  <span>{duration}</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

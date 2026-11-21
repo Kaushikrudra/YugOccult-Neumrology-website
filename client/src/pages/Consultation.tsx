@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import {
   CheckCircle,
   ChevronDown,
   Award,
-  Info,
   Sparkles,
   ShieldCheck,
+  Calendar as CalendarIcon,
+  Clock,
+  MapPin,
+  User,
+  Mail,
+  Phone,
+  Lock,
+  Loader2,
+  X,
 } from 'lucide-react'
 import Container from '../components/Container'
 import Button from '../components/Button'
@@ -15,7 +22,9 @@ import LeadCaptureSection from '../components/LeadCaptureSection'
 import OnlineConsultationSection from '../components/OnlineConsultationSection'
 import { consultationData } from '../data/consultation'
 import { useSiteSettings } from '../context/SiteSettingsContext'
+import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
+import { startCheckout } from '../lib/cashfree'
 
 export const Consultation: React.FC = () => {
   // Master consultation settings from API (with consultationData fallback)
@@ -91,53 +100,378 @@ export const Consultation: React.FC = () => {
     }
   }, [])
 
+  const { user } = useAuth()
+
   // Accordion state
   const [openFaqId, setOpenFaqId] = useState<string | null>('faq-1')
-  // Booking toast state
-  const [showBookingToast, setShowBookingToast] = useState(false)
+
+  // Booking Modal State
+  const [showBookingModal, setShowBookingModal] = useState(false)
+  const [selectedServiceTitle, setSelectedServiceTitle] = useState('1-on-1 Comprehensive Session')
+  const [bookName, setBookName] = useState('')
+  const [bookEmail, setBookEmail] = useState('')
+  const [bookPhone, setBookPhone] = useState('')
+  const [bookDate, setBookDate] = useState('')
+  const [bookSlot, setBookSlot] = useState<'Morning' | 'Afternoon' | 'Evening'>('Morning')
+  const [bookBirthDate, setBookBirthDate] = useState('')
+  const [bookBirthTime, setBookBirthTime] = useState('')
+  const [bookBirthTimeUnknown, setBookBirthTimeUnknown] = useState(false)
+  const [bookBirthPlace, setBookBirthPlace] = useState('')
+  const [bookMessage, setBookMessage] = useState('')
+  const [bookConsent, setBookConsent] = useState(false)
+  const [bookingError, setBookingError] = useState<string | null>(null)
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false)
 
   const toggleFaq = (id: string) => {
     setOpenFaqId((prev) => (prev === id ? null : id))
   }
 
-  const handleBookAndPay = () => {
-    setShowBookingToast(true)
-    setTimeout(() => {
-      setShowBookingToast(false)
-    }, 6000)
+  const handleOpenBookingModal = (serviceTitle?: string) => {
+    if (serviceTitle) {
+      setSelectedServiceTitle(serviceTitle)
+    } else {
+      setSelectedServiceTitle('1-on-1 Comprehensive Session')
+    }
+    if (user) {
+      if (user.name && !bookName) setBookName(user.name)
+      if (user.email && !bookEmail) setBookEmail(user.email)
+    }
+    setBookingError(null)
+    setShowBookingModal(true)
   }
+
+  // Handle Book & Pay via Cashfree
+  const handleSubmitBooking = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBookingError(null)
+
+    const nameToUse = bookName.trim()
+    const emailToUse = bookEmail.trim()
+    const cleanPhone = bookPhone.trim().replace(/\D/g, '').slice(-10)
+
+    if (!nameToUse || nameToUse.length < 2) {
+      setBookingError('Please enter your full name (at least 2 characters).')
+      return
+    }
+
+    if (!emailToUse || !emailToUse.includes('@')) {
+      setBookingError('Please enter a valid email address for session confirmation and links.')
+      return
+    }
+
+    if (cleanPhone.length !== 10) {
+      setBookingError('Please enter a valid 10-digit mobile number.')
+      return
+    }
+
+    if (!bookDate) {
+      setBookingError('Please select your preferred consultation date.')
+      return
+    }
+
+    if (!bookConsent) {
+      setBookingError('Please agree to the booking and consultation policy to proceed.')
+      return
+    }
+
+    try {
+      setIsSubmittingBooking(true)
+      const res = await api.post<{ orderId: string; paymentSessionId: string }>(
+        '/api/payments/consultation-order',
+        {
+          name: nameToUse,
+          email: emailToUse,
+          phone: cleanPhone,
+          service_title: selectedServiceTitle,
+          preferred_date: bookDate,
+          preferred_slot: bookSlot,
+          birth_date: bookBirthDate || null,
+          birth_time: bookBirthTimeUnknown ? null : bookBirthTime || null,
+          birth_time_unknown: bookBirthTimeUnknown,
+          birth_place: bookBirthPlace.trim() || null,
+          message: bookMessage.trim() || '',
+          consent: true,
+        }
+      )
+
+      if (res?.paymentSessionId) {
+        setShowBookingModal(false)
+        await startCheckout(res.paymentSessionId)
+      } else {
+        throw new Error('No payment session received.')
+      }
+    } catch (err: any) {
+      console.error('[Consultation:Booking] Error:', err)
+      setBookingError(err?.message || 'Failed to initiate booking payment. Please try again.')
+    } finally {
+      setIsSubmittingBooking(false)
+    }
+  }
+
+  // Tomorrow as minimum date, 60 days ahead as maximum
+  const tomorrowStr = (() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    return d.toISOString().split('T')[0]
+  })()
+
+  const maxDateStr = (() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 60)
+    return d.toISOString().split('T')[0]
+  })()
 
   return (
     <div className="space-y-12 sm:space-y-20 pb-12 sm:pb-24 pt-4 sm:pt-8">
-      {/* Toast Notification for Book & Pay */}
-      {showBookingToast && (
-        <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-md animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="bg-primary text-ivory p-4 sm:p-5 rounded-2xl shadow-xl border border-secondary/40 flex items-start gap-3">
-            <Info className="w-5 h-5 text-accent shrink-0 mt-0.5" />
-            <div className="space-y-1.5 flex-1">
-              <h5 className="font-heading text-lg font-bold text-accent">
-                Online Payment Gateway Coming Soon!
-              </h5>
-              <p className="text-xs text-ivory/85 leading-relaxed">
-                Direct online payment (Cashfree) is scheduled for the next phase. To reserve your consultation slot right now, please reach out via our Contact form or WhatsApp.
+      {/* Consultation Booking Modal */}
+      {showBookingModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#FBF7EE] w-full max-w-lg rounded-2xl shadow-2xl border border-secondary/20 overflow-hidden text-[#2B2A3D] max-h-[92vh] flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-[#1E1B4B] to-[#2E2A5C] text-white p-5 sm:p-6 relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowBookingModal(false)}
+                className="absolute top-4 right-4 p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+                aria-label="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+              <div className="flex items-center gap-2 mb-1">
+                <Sparkles className="w-4 h-4 text-[#C9A227]" />
+                <span className="text-xs uppercase tracking-wider text-[#C9A227] font-semibold">
+                  1-on-1 Private Consultation
+                </span>
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold text-[#FBF7EE] font-heading pr-8">
+                {selectedServiceTitle}
+              </h3>
+              <p className="text-xs text-[#C9A227] font-semibold mt-1">
+                Consultation Fee: ₹{consultation.fee.toLocaleString('en-IN')} ({consultation.duration_minutes} Mins)
               </p>
-              <div className="pt-2 flex items-center gap-2">
-                <Link
-                  to="/contact"
-                  onClick={() => setShowBookingToast(false)}
-                  className="text-xs font-semibold text-accent underline underline-offset-2 hover:text-ivory"
-                >
-                  Go to Contact Form →
-                </Link>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitBooking} className="p-5 sm:p-6 overflow-y-auto space-y-4">
+              {bookingError && (
+                <div className="p-3 rounded-xl bg-[#EFEAF8] border border-[#5B3E96]/30 text-xs font-semibold text-[#5B3E96] animate-in fade-in">
+                  {bookingError}
+                </div>
+              )}
+
+              {/* Seeker Name & Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#2E2A5C] mb-1">
+                    Your Full Name <span className="text-[#C9A227]">*</span>
+                  </label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-secondary absolute left-3 top-3 pointer-events-none" />
+                    <input
+                      type="text"
+                      required
+                      minLength={2}
+                      value={bookName}
+                      onChange={(e) => setBookName(e.target.value)}
+                      placeholder="e.g. Ananya Sen"
+                      className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#2E2A5C] mb-1">
+                    Mobile / WhatsApp <span className="text-[#C9A227]">*</span>
+                  </label>
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-secondary absolute left-3 top-3 pointer-events-none" />
+                    <input
+                      type="tel"
+                      required
+                      maxLength={10}
+                      value={bookPhone}
+                      onChange={(e) => setBookPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="10-digit number"
+                      className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#2E2A5C] mb-1">
+                  Email Address <span className="text-[#C9A227]">*</span>
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-secondary absolute left-3 top-3 pointer-events-none" />
+                  <input
+                    type="email"
+                    required
+                    value={bookEmail}
+                    onChange={(e) => setBookEmail(e.target.value)}
+                    placeholder="For session link & calendar invite"
+                    className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                  />
+                </div>
+              </div>
+
+              {/* Date & Slot Selection */}
+              <div className="pt-2 border-t border-secondary/15 space-y-3">
+                <p className="text-xs uppercase tracking-wider font-bold text-[#5B3E96]">
+                  Schedule Preferences
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="block text-xs font-medium text-[#2B2A3D] mb-1 flex items-center gap-1.5">
+                      <CalendarIcon className="w-3.5 h-3.5 text-secondary" />
+                      Preferred Date <span className="text-[#C9A227]">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      min={tomorrowStr}
+                      max={maxDateStr}
+                      value={bookDate}
+                      onChange={(e) => setBookDate(e.target.value)}
+                      className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-[#2B2A3D] mb-1 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-secondary" />
+                      Preferred Slot <span className="text-[#C9A227]">*</span>
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {(['Morning', 'Afternoon', 'Evening'] as const).map((slot) => (
+                        <button
+                          key={slot}
+                          type="button"
+                          onClick={() => setBookSlot(slot)}
+                          className={`py-2 px-1 text-[11px] rounded-lg font-semibold transition-all border text-center ${
+                            bookSlot === slot
+                              ? 'bg-[#5B3E96] text-[#FBF7EE] border-[#5B3E96]'
+                              : 'bg-white text-[#2B2A3D] border-secondary/20 hover:bg-mist'
+                          }`}
+                        >
+                          {slot}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Birth Details (Optional) */}
+              <div className="pt-2 border-t border-secondary/15 space-y-3">
+                <p className="text-xs uppercase tracking-wider font-bold text-[#5B3E96]">
+                  Birth Details <span className="text-xs font-normal text-ink/60 lowercase">(optional – for horoscope analysis)</span>
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <label className="block text-xs font-medium text-[#2B2A3D] mb-1">Date of Birth</label>
+                    <input
+                      type="date"
+                      value={bookBirthDate}
+                      onChange={(e) => setBookBirthDate(e.target.value)}
+                      className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-medium text-[#2B2A3D]">Birth Time</label>
+                      <label className="text-[11px] text-ink/70 flex items-center gap-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={bookBirthTimeUnknown}
+                          onChange={(e) => setBookBirthTimeUnknown(e.target.checked)}
+                          className="rounded text-[#5B3E96] focus:ring-0"
+                        />
+                        <span>Unknown</span>
+                      </label>
+                    </div>
+                    <input
+                      type="time"
+                      disabled={bookBirthTimeUnknown}
+                      value={bookBirthTime}
+                      onChange={(e) => setBookBirthTime(e.target.value)}
+                      className={`w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40 ${
+                        bookBirthTimeUnknown ? 'opacity-50 cursor-not-allowed bg-mist' : ''
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-[#2B2A3D] mb-1 flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-secondary" />
+                    Place of Birth (City, State)
+                  </label>
+                  <input
+                    type="text"
+                    value={bookBirthPlace}
+                    onChange={(e) => setBookBirthPlace(e.target.value)}
+                    placeholder="e.g. Lucknow, Uttar Pradesh"
+                    maxLength={100}
+                    className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40"
+                  />
+                </div>
+              </div>
+
+              {/* Message / Questions */}
+              <div>
+                <label className="block text-xs font-medium text-[#2B2A3D] mb-1">
+                  Questions / Key Topics for Anushka ji
+                </label>
+                <textarea
+                  rows={2}
+                  maxLength={1000}
+                  value={bookMessage}
+                  onChange={(e) => setBookMessage(e.target.value)}
+                  placeholder="Outline the key questions or life areas you wish to address..."
+                  className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40 resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Consent Policy */}
+              <div className="pt-2">
+                <label className="flex items-start gap-2.5 text-xs text-[#2B2A3D]/85 cursor-pointer leading-relaxed">
+                  <input
+                    type="checkbox"
+                    checked={bookConsent}
+                    onChange={(e) => setBookConsent(e.target.checked)}
+                    className="rounded text-[#5B3E96] focus:ring-0 mt-0.5"
+                  />
+                  <span>
+                    I agree to the consultation booking policy and understand that appointment fees are non-refundable. Rescheduling is available with 24 hours prior notice.
+                  </span>
+                </label>
+              </div>
+
+              {/* Submit CTA */}
+              <div className="pt-3 border-t border-secondary/15">
                 <button
-                  type="button"
-                  onClick={() => setShowBookingToast(false)}
-                  className="text-xs text-ivory/60 hover:text-ivory ml-auto"
+                  type="submit"
+                  disabled={isSubmittingBooking}
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#2E2A5C] hover:bg-[#3C3775] text-[#FBF7EE] font-semibold text-sm shadow-md transition-all active:scale-[0.99] disabled:opacity-60"
                 >
-                  Dismiss
+                  {isSubmittingBooking ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-[#C9A227]" />
+                      <span>Redirecting to Payment...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4 text-[#C9A227]" />
+                      <span>Pay &amp; Confirm Booking (₹{consultation.fee.toLocaleString('en-IN')})</span>
+                    </>
+                  )}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
@@ -364,7 +698,10 @@ export const Consultation: React.FC = () => {
       )}
 
       {/* Online Consultation Benefits & 1-on-1 Comprehensive Session Section */}
-      <OnlineConsultationSection consultation={consultation} onBook={handleBookAndPay} />
+      <OnlineConsultationSection
+        consultation={consultation}
+        onBook={() => handleOpenBookingModal('1-on-1 Comprehensive Session')}
+      />
 
       {/* 2. SERVICES GRID SECTION */}
       <section>
@@ -439,7 +776,7 @@ export const Consultation: React.FC = () => {
                         type="button"
                         variant="outline-light"
                         size="sm"
-                        onClick={handleBookAndPay}
+                        onClick={() => handleOpenBookingModal(service.title.replace(/^\d+[\.\s]+\s*/, ''))}
                         className="w-full py-2 sm:py-2.5 !border-2 !border-[#C9A227] !text-white bg-white/5 hover:!bg-[#C9A227] hover:!text-[#1E1B4B] text-xs font-semibold rounded-full flex items-center justify-center gap-2 transition-all shadow-xs"
                       >
                         <span>Book Consultation</span>

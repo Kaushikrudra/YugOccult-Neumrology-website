@@ -1,20 +1,26 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BookOpen, Download, FileText, Loader2, Sparkles } from 'lucide-react'
+import { BookOpen, Download, FileText, Loader2, Sparkles, ShoppingBag } from 'lucide-react'
 import { Ebook } from '../types/ebook'
 import { useAuth } from '../context/AuthContext'
 import { api, ApiError } from '../lib/api'
+import { startCheckout } from '../lib/cashfree'
 
 interface EbookCardProps {
   ebook: Ebook
+  isPurchased?: boolean
 }
 
-export const EbookCard: React.FC<EbookCardProps> = ({ ebook }) => {
+export const EbookCard: React.FC<EbookCardProps> = ({ ebook, isPurchased = false }) => {
   const { user } = useAuth()
   const navigate = useNavigate()
 
   const [downloading, setDownloading] = useState(false)
+  const [buying, setBuying] = useState(false)
   const [downloadError, setDownloadError] = useState<string | null>(null)
+
+  const isFree = !ebook.price || ebook.price <= 0
+  const canDownload = isFree || isPurchased
 
   const formatFileSize = (bytes: number): string => {
     if (!bytes || bytes <= 0) return '0.0 MB'
@@ -54,14 +60,43 @@ export const EbookCard: React.FC<EbookCardProps> = ({ ebook }) => {
       console.error('[EbookCard:Download] Error:', err)
       const status = (err as ApiError)?.status || (err as any)?.statusCode
       if (status === 501) {
-        setDownloadError('Downloads are not available right now')
+        setDownloadError('Downloads are temporarily unavailable right now')
       } else if (status === 402) {
-        setDownloadError('This ebook is not available yet')
+        setDownloadError('Purchase required to download this ebook')
       } else {
         setDownloadError(err?.message || 'Download could not be initiated. Please try again.')
       }
     } finally {
       setDownloading(false)
+    }
+  }
+
+  const handleBuyEbook = async () => {
+    if (buying) return
+    setDownloadError(null)
+
+    if (!user) {
+      navigate(`/login?redirect=${encodeURIComponent('/courses#ebooks')}`)
+      return
+    }
+
+    try {
+      setBuying(true)
+      const res = await api.post<{ orderId: string; paymentSessionId: string }>(
+        '/api/payments/ebook-order',
+        { ebookId: ebook.id }
+      )
+
+      if (res?.paymentSessionId) {
+        await startCheckout(res.paymentSessionId)
+      } else {
+        throw new Error('No payment session received.')
+      }
+    } catch (err: any) {
+      console.error('[EbookCard:Buy] Error:', err)
+      setDownloadError(err?.message || 'Failed to initiate purchase. Please try again.')
+    } finally {
+      setBuying(false)
     }
   }
 
@@ -102,11 +137,21 @@ export const EbookCard: React.FC<EbookCardProps> = ({ ebook }) => {
           </div>
         )}
 
-        {/* Top Badges (Free + PDF) */}
+        {/* Top Badges */}
         <div className="absolute top-3 left-3 flex items-center gap-1.5 z-20">
-          <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#EFEAF8] text-[#5B3E96] border border-[#5B3E96]/30 shadow-xs">
-            Free
-          </span>
+          {isFree ? (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#EFEAF8] text-[#5B3E96] border border-[#5B3E96]/30 shadow-xs">
+              Free
+            </span>
+          ) : isPurchased ? (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#5B3E96] text-[#FBF7EE] shadow-xs">
+              Purchased
+            </span>
+          ) : (
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#C9A227] text-[#1E1B4B] shadow-xs">
+              Paid · ₹{ebook.price.toLocaleString('en-IN')}
+            </span>
+          )}
           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#2E2A5C]/80 backdrop-blur-sm text-[#FBF7EE] border border-[#C9A227]/40">
             PDF
           </span>
@@ -138,31 +183,54 @@ export const EbookCard: React.FC<EbookCardProps> = ({ ebook }) => {
           <div className="flex items-center justify-between gap-3 mb-3 text-xs text-[#2B2A3D]/65">
             <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#5B3E96]">
               <Sparkles className="w-3 h-3" />
-              Instant Digital Download
+              Instant Digital Access
             </span>
-            <span className="text-[11px] font-medium">
-              {formatFileSize(ebook.size_bytes)}
-            </span>
+            {!isFree && (
+              <span className="font-heading text-sm font-bold text-[#2E2A5C]">
+                ₹{ebook.price.toLocaleString('en-IN')}
+              </span>
+            )}
           </div>
 
-          <button
-            type="button"
-            onClick={handleDownload}
-            disabled={downloading}
-            className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-[#2E2A5C] hover:bg-[#3C3775] text-[#FBF7EE] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#C9A227]/50"
-          >
-            {downloading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-[#C9A227]" />
-                <span>Preparing Download...</span>
-              </>
-            ) : (
-              <>
-                <Download className="w-4 h-4 text-[#C9A227]" />
-                <span>Download PDF</span>
-              </>
-            )}
-          </button>
+          {canDownload ? (
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={downloading}
+              className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-[#2E2A5C] hover:bg-[#3C3775] text-[#FBF7EE] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#C9A227]/50"
+            >
+              {downloading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-[#C9A227]" />
+                  <span>Preparing Download...</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 text-[#C9A227]" />
+                  <span>Download PDF</span>
+                </>
+              )}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleBuyEbook}
+              disabled={buying}
+              className="w-full min-h-[44px] px-4 py-2.5 rounded-xl bg-[#2E2A5C] hover:bg-[#3C3775] text-[#FBF7EE] font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-sm active:scale-[0.99] disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[#C9A227]/50"
+            >
+              {buying ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-[#C9A227]" />
+                  <span>Processing Checkout...</span>
+                </>
+              ) : (
+                <>
+                  <ShoppingBag className="w-4 h-4 text-[#C9A227]" />
+                  <span>Buy Ebook (₹{ebook.price.toLocaleString('en-IN')})</span>
+                </>
+              )}
+            </button>
+          )}
 
           {/* Download Error Notice in Royal Violet */}
           {downloadError && (

@@ -20,6 +20,7 @@ import { coursesData, Course } from '../data/courses'
 import { Ebook } from '../types/ebook'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
+import { startCheckout } from '../lib/cashfree'
 
 const PREFERRED_CATEGORY_ORDER = [
   'Packages',
@@ -47,6 +48,7 @@ export const Courses: React.FC = () => {
 
   // Enrolled course IDs for current user
   const [enrolledCourseIds, setEnrolledCourseIds] = useState<Set<string>>(new Set())
+  const [purchasedEbookIds, setPurchasedEbookIds] = useState<Set<string>>(new Set())
 
   // State for filter tab
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
@@ -56,9 +58,6 @@ export const Courses: React.FC = () => {
 
   // State for active course modal
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null)
-
-  // State for Buy Now Toast
-  const [buyNowToast, setBuyNowToast] = useState<string | null>(null)
 
   // State for Free Enrollment Success Toast
   const [enrollSuccessToast, setEnrollSuccessToast] = useState<string | null>(null)
@@ -120,13 +119,23 @@ export const Courses: React.FC = () => {
     async function loadEnrolledCourses() {
       if (!user) {
         setEnrolledCourseIds(new Set())
+        setPurchasedEbookIds(new Set())
         return
       }
 
       try {
-        const res = await api.get<{ courses: Array<{ id: string }> }>('/api/account/courses')
-        if (isMounted && res?.courses) {
-          setEnrolledCourseIds(new Set(res.courses.map((c) => c.id)))
+        const [coursesRes, ebooksRes] = await Promise.allSettled([
+          api.get<{ courses: Array<{ id: string; is_expired?: boolean }> }>('/api/account/courses'),
+          api.get<{ ebooks: Array<{ id: string }> }>('/api/account/ebooks'),
+        ])
+        if (isMounted && coursesRes.status === 'fulfilled' && coursesRes.value?.courses) {
+          // Only mark as actively enrolled if 1-year access has not expired
+          setEnrolledCourseIds(
+            new Set(coursesRes.value.courses.filter((c) => !c.is_expired).map((c) => c.id))
+          )
+        }
+        if (isMounted && ebooksRes.status === 'fulfilled' && ebooksRes.value?.ebooks) {
+          setPurchasedEbookIds(new Set(ebooksRes.value.ebooks.map((e) => e.id)))
         }
       } catch {
         // Non-fatal, fallback to empty
@@ -218,11 +227,49 @@ export const Courses: React.FC = () => {
     }
   }, [selectedCourse])
 
-  const handleBuyNow = (courseTitle: string) => {
-    setBuyNowToast(courseTitle)
-    setTimeout(() => {
-      setBuyNowToast(null)
-    }, 6000)
+  const [buyingCourseId, setBuyingCourseId] = useState<string | null>(null)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [showPhonePrompt, setShowPhonePrompt] = useState<{ id: string; title: string; price: number } | null>(null)
+  const [phoneInput, setPhoneInput] = useState('')
+
+  const handleInitiateCoursePayment = async (
+    course: { id: string; title: string; price: number },
+    customPhone?: string
+  ) => {
+    setPaymentError(null)
+
+    if (!user) {
+      navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)
+      return
+    }
+
+    try {
+      setBuyingCourseId(course.id)
+      const payload: { courseId: string; phone?: string } = { courseId: course.id }
+      if (customPhone) payload.phone = customPhone
+
+      const res = await api.post<{ orderId: string; paymentSessionId: string }>(
+        '/api/payments/course-order',
+        payload
+      )
+
+      if (res?.paymentSessionId) {
+        setShowPhonePrompt(null)
+        await startCheckout(res.paymentSessionId)
+      } else {
+        throw new Error('No payment session received.')
+      }
+    } catch (err: any) {
+      console.error('[Courses:BuyNow] Error:', err)
+      const msg = err?.message || 'Payment initiation failed. Please try again.'
+      if (msg.toLowerCase().includes('phone')) {
+        setShowPhonePrompt(course)
+      } else {
+        setPaymentError(msg)
+      }
+    } finally {
+      setBuyingCourseId(null)
+    }
   }
 
   const handleEnrollSuccess = (courseTitle: string) => {
@@ -234,34 +281,77 @@ export const Courses: React.FC = () => {
 
   return (
     <div className="space-y-10 sm:space-y-16 pb-12 sm:pb-24 pt-4 sm:pt-8 min-w-0">
-      {/* Toast Notification for Buy Now */}
-      {buyNowToast && (
+      {/* Payment Error Toast Notification in Royal Violet */}
+      {paymentError && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-md animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="bg-primary text-ivory p-4 sm:p-5 rounded-2xl shadow-xl border border-secondary/40 flex items-start gap-3">
-            <Info className="w-5 h-5 text-accent shrink-0 mt-0.5" />
+          <div className="bg-[#EFEAF8] text-[#5B3E96] p-4 sm:p-5 rounded-2xl shadow-xl border border-[#5B3E96]/30 flex items-start gap-3">
+            <Info className="w-5 h-5 text-[#5B3E96] shrink-0 mt-0.5" />
             <div className="space-y-1.5 flex-1">
-              <h5 className="font-heading text-lg font-bold text-accent">
-                Enrollment for &ldquo;{buyNowToast}&rdquo;
+              <h5 className="font-heading text-base font-bold text-[#5B3E96]">
+                Notice
               </h5>
-              <p className="text-xs text-ivory/85 leading-relaxed">
-                Direct online payment checkout will be enabled in Phase 5. To reserve your seat in the upcoming cohort right now, please submit an enquiry on our Contact page or message on WhatsApp.
+              <p className="text-xs text-[#2E2A5C] leading-relaxed">
+                {paymentError}
               </p>
-              <div className="pt-2 flex items-center gap-2">
-                <Link
-                  to="/contact"
-                  onClick={() => setBuyNowToast(null)}
-                  className="text-xs font-semibold text-accent underline underline-offset-2 hover:text-ivory"
-                >
-                  Reserve Seat via Contact Form →
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => setBuyNowToast(null)}
-                  className="text-xs text-ivory/60 hover:text-ivory ml-auto"
-                >
-                  Dismiss
-                </button>
-              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPaymentError(null)}
+              className="text-xs text-[#5B3E96]/70 hover:text-[#5B3E96] ml-auto font-bold"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Phone Number Modal if required */}
+      {showPhonePrompt && (
+        <div className="fixed inset-0 z-50 bg-[#1E1B4B]/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-[#2E2A5C]/15 shadow-2xl max-w-md w-full p-6 sm:p-8 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-[#2E2A5C]/10">
+              <h4 className="font-heading text-lg font-bold text-[#2E2A5C]">
+                Phone Number Required
+              </h4>
+              <button
+                type="button"
+                onClick={() => setShowPhonePrompt(null)}
+                className="text-[#2B2A3D]/60 hover:text-[#2B2A3D]"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <p className="text-xs text-[#2B2A3D]/75 leading-relaxed">
+              Please enter your 10-digit mobile number to proceed with payment for &ldquo;{showPhonePrompt.title}&rdquo;.
+            </p>
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-[#2E2A5C]">Mobile Number</label>
+              <input
+                type="tel"
+                placeholder="10-digit mobile number"
+                value={phoneInput}
+                onChange={(e) => setPhoneInput(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                className="w-full px-4 py-2.5 rounded-xl border border-[#2E2A5C]/20 text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A227]"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowPhonePrompt(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="cta"
+                size="sm"
+                disabled={phoneInput.length !== 10 || buyingCourseId === showPhonePrompt.id}
+                onClick={() => handleInitiateCoursePayment(showPhonePrompt, phoneInput)}
+              >
+                {buyingCourseId === showPhonePrompt.id ? 'Processing...' : 'Continue to Payment'}
+              </Button>
             </div>
           </div>
         </div>
@@ -415,7 +505,7 @@ export const Courses: React.FC = () => {
                     bundle_items={course.bundle_items}
                     isEnrolled={enrolledCourseIds.has(course.id)}
                     onViewDetails={() => setSelectedCourse(course)}
-                    onBuyNow={() => handleBuyNow(course.title)}
+                    onBuyNow={() => handleInitiateCoursePayment(course)}
                     onEnrollSuccess={handleEnrollSuccess}
                   />
                 ))}
@@ -485,7 +575,11 @@ export const Courses: React.FC = () => {
             {/* Grid: 1 col mobile, 2 col tablet, 3 col desktop */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
               {ebooks.map((ebook) => (
-                <EbookCard key={ebook.id} ebook={ebook} />
+                <EbookCard
+                  key={ebook.id}
+                  ebook={ebook}
+                  isPurchased={purchasedEbookIds.has(ebook.id)}
+                />
               ))}
             </div>
 
@@ -632,7 +726,12 @@ export const Courses: React.FC = () => {
               {/* Pricing strip in modal */}
               <div className="flex items-baseline justify-between p-4 rounded-2xl bg-white/80 border border-secondary/15">
                 <div>
-                  <span className="text-[11px] text-ink/60 uppercase block font-medium">Fee</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] text-ink/60 uppercase font-medium">Fee</span>
+                    <span className="text-[10px] font-semibold text-[#5B3E96] bg-[#EFEAF8] px-2 py-0.5 rounded-full">
+                      1-Year Full Access
+                    </span>
+                  </div>
                   <div className="flex items-baseline gap-2 mt-0.5">
                     {selectedCourse.price === 0 ? (
                       <span className="font-heading text-2xl font-bold text-[#5B3E96]">Free</span>
@@ -708,14 +807,15 @@ export const Courses: React.FC = () => {
                   type="button"
                   variant="cta"
                   size="md"
+                  disabled={buyingCourseId === selectedCourse.id}
                   onClick={() => {
-                    const cTitle = selectedCourse.title
+                    const c = selectedCourse
                     setSelectedCourse(null)
-                    handleBuyNow(cTitle)
+                    handleInitiateCoursePayment(c)
                   }}
                   className="w-full sm:w-auto justify-center"
                 >
-                  Buy Now
+                  {buyingCourseId === selectedCourse.id ? 'Processing...' : 'Buy Now'}
                 </Button>
               )}
             </div>

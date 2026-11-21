@@ -21,6 +21,8 @@ interface Enrollment {
   status: 'active' | 'revoked'
   source: 'payment' | 'admin'
   granted_at: string
+  expires_at: string | null
+  is_expired?: boolean
   buyer_name: string
   buyer_email: string
   buyer_phone: string | null
@@ -211,7 +213,8 @@ export const AdminStudents: React.FC = () => {
   // Handle Revoke / Reactivate Status
   const handleConfirmStatusToggle = async () => {
     if (!toggleEnrollment) return
-    const newStatus = toggleEnrollment.status === 'active' ? 'revoked' : 'active'
+    const isRevoking = toggleEnrollment.status === 'active' && !toggleEnrollment.is_expired
+    const newStatus = isRevoking ? 'revoked' : 'active'
 
     try {
       setIsUpdatingStatus(true)
@@ -396,12 +399,17 @@ export const AdminStudents: React.FC = () => {
                   <tbody className="divide-y divide-[#5B3E96]/10 text-xs">
                     {enrollments.map((enr) => (
                       <tr key={enr.id} className="hover:bg-[#FBF7EE]/40 transition-colors">
-                        {/* Status Badge: Active = Royal Violet, Revoked = Soft Gold outline */}
+                        {/* Status Badge: Active = Royal Violet, Expired/Revoked = Soft Gold outline */}
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          {enr.status === 'active' ? (
+                          {enr.status === 'active' && !enr.is_expired ? (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#5B3E96]/15 text-[#5B3E96] border border-[#5B3E96]/30">
                               <span className="w-1.5 h-1.5 rounded-full bg-[#5B3E96]" />
                               Active
+                            </span>
+                          ) : enr.is_expired ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-[#C9A227] border border-[#C9A227]/40 bg-[#C9A227]/10">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#C9A227]" />
+                              Expired
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider text-[#C9A227] border border-[#C9A227]/40 bg-[#C9A227]/10">
@@ -434,13 +442,28 @@ export const AdminStudents: React.FC = () => {
                           </span>
                         </td>
 
-                        {/* Granted At */}
+                        {/* Granted & Validity */}
                         <td className="py-3.5 px-4 whitespace-nowrap text-[#2B2A3D]/70">
-                          {new Date(enr.granted_at).toLocaleDateString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
+                          <div>
+                            Granted: {new Date(enr.granted_at).toLocaleDateString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </div>
+                          {enr.expires_at && (
+                            <div
+                              className={`text-[10px] mt-0.5 ${
+                                enr.is_expired ? 'text-[#C9A227] font-semibold' : 'text-[#5B3E96] font-medium'
+                              }`}
+                            >
+                              Expires: {new Date(enr.expires_at).toLocaleDateString('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </div>
+                          )}
                         </td>
 
                         {/* Activity: Last accessed & total count */}
@@ -471,12 +494,16 @@ export const AdminStudents: React.FC = () => {
                           <button
                             onClick={() => setToggleEnrollment(enr)}
                             className={`px-3 py-1.5 rounded-xl font-semibold text-xs transition-colors ${
-                              enr.status === 'active'
+                              enr.status === 'active' && !enr.is_expired
                                 ? 'bg-[#2E2A5C]/10 text-[#2E2A5C] hover:bg-[#2E2A5C] hover:text-[#FBF7EE]'
                                 : 'bg-[#5B3E96]/15 text-[#5B3E96] hover:bg-[#5B3E96] hover:text-[#FBF7EE]'
                             }`}
                           >
-                            {enr.status === 'active' ? 'Revoke Access' : 'Reactivate'}
+                            {enr.status === 'active' && !enr.is_expired
+                              ? 'Revoke Access'
+                              : enr.is_expired
+                              ? 'Renew (1-Yr)'
+                              : 'Reactivate'}
                           </button>
                         </td>
                       </tr>
@@ -773,49 +800,52 @@ export const AdminStudents: React.FC = () => {
       {/* ========================================================================= */}
       {/* MODAL 2: CONFIRM REVOKE / REACTIVATE */}
       {/* ========================================================================= */}
-      {toggleEnrollment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2E2A5C]/50 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#5B3E96]/20 relative">
-            <h3 className="font-heading text-xl font-bold text-[#2E2A5C]">
-              {toggleEnrollment.status === 'active' ? 'Revoke Course Access?' : 'Reactivate Course Access?'}
-            </h3>
-            <p className="text-xs sm:text-sm text-[#2B2A3D]/70 mt-2 leading-relaxed">
-              {toggleEnrollment.status === 'active' ? (
-                <>
-                  Are you sure you want to revoke access for{' '}
-                  <strong className="text-[#2E2A5C]">{toggleEnrollment.buyer_email}</strong> to{' '}
-                  <span className="italic">"{toggleEnrollment.course_title}"</span>? They will no
-                  longer be able to view or download lesson materials.
-                </>
-              ) : (
-                <>
-                  Restore active enrollment for{' '}
-                  <strong className="text-[#2E2A5C]">{toggleEnrollment.buyer_email}</strong> to{' '}
-                  <span className="italic">"{toggleEnrollment.course_title}"</span>.
-                </>
-              )}
-            </p>
+      {toggleEnrollment && (() => {
+        const isRevoking = toggleEnrollment.status === 'active' && !toggleEnrollment.is_expired
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#2E2A5C]/50 backdrop-blur-sm animate-fade-in">
+            <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-[#5B3E96]/20 relative">
+              <h3 className="font-heading text-xl font-bold text-[#2E2A5C]">
+                {isRevoking ? 'Revoke Course Access?' : 'Renew / Reactivate 1-Year Access?'}
+              </h3>
+              <p className="text-xs sm:text-sm text-[#2B2A3D]/70 mt-2 leading-relaxed">
+                {isRevoking ? (
+                  <>
+                    Are you sure you want to revoke access for{' '}
+                    <strong className="text-[#2E2A5C]">{toggleEnrollment.buyer_email}</strong> to{' '}
+                    <span className="italic">"{toggleEnrollment.course_title}"</span>? They will no
+                    longer be able to view or download lesson materials.
+                  </>
+                ) : (
+                  <>
+                    Grant fresh 1-year active access for{' '}
+                    <strong className="text-[#2E2A5C]">{toggleEnrollment.buyer_email}</strong> to{' '}
+                    <span className="italic">"{toggleEnrollment.course_title}"</span> starting from today.
+                  </>
+                )}
+              </p>
 
-            <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-[#5B3E96]/10">
-              <button
-                onClick={() => setToggleEnrollment(null)}
-                disabled={isUpdatingStatus}
-                className="px-4 py-2 rounded-xl border border-[#5B3E96]/20 text-xs font-semibold text-[#2B2A3D]"
-              >
-                Cancel
-              </button>
-              {/* Note: Deep Indigo filled button, strictly no red! */}
-              <button
-                onClick={handleConfirmStatusToggle}
-                disabled={isUpdatingStatus}
-                className="px-5 py-2.5 rounded-xl bg-[#2E2A5C] hover:bg-[#3C3775] text-[#FBF7EE] text-xs font-semibold shadow-md disabled:opacity-60"
-              >
-                {isUpdatingStatus ? 'Updating...' : toggleEnrollment.status === 'active' ? 'Confirm Revocation' : 'Reactivate Access'}
-              </button>
+              <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-[#5B3E96]/10">
+                <button
+                  onClick={() => setToggleEnrollment(null)}
+                  disabled={isUpdatingStatus}
+                  className="px-4 py-2 rounded-xl border border-[#5B3E96]/20 text-xs font-semibold text-[#2B2A3D]"
+                >
+                  Cancel
+                </button>
+                {/* Note: Deep Indigo filled button, strictly no red! */}
+                <button
+                  onClick={handleConfirmStatusToggle}
+                  disabled={isUpdatingStatus}
+                  className="px-5 py-2.5 rounded-xl bg-[#2E2A5C] hover:bg-[#3C3775] text-[#FBF7EE] text-xs font-semibold shadow-md disabled:opacity-60"
+                >
+                  {isUpdatingStatus ? 'Updating...' : isRevoking ? 'Confirm Revocation' : 'Grant 1-Year Access'}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

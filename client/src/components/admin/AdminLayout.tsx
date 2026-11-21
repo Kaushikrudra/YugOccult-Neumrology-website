@@ -74,6 +74,7 @@ export const AdminLayout: React.FC = () => {
     { name: 'Reports CMS', path: '/admin/reports', icon: FileText, end: false },
     { name: 'Report Orders', path: '/admin/report-orders', icon: ClipboardList, end: false },
     { name: 'Testimonials', path: '/admin/testimonials', icon: Quote, end: false },
+    { name: 'Bookings', path: '/admin/bookings', icon: Calendar, end: false },
     { name: 'Consultation', path: '/admin/consultation', icon: Calendar, end: false },
     { name: 'Enquiries', path: '/admin/enquiries', icon: MessageSquare, end: false },
     { name: 'Orders', path: '/admin/orders', icon: ShoppingBag, end: false },

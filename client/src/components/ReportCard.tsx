@@ -12,11 +12,15 @@ import {
   Calendar,
   Clock,
   MapPin,
-  MessageSquare,
+  CreditCard,
+  Loader2,
+  Lock,
 } from 'lucide-react'
 import { Report, ReportBadge } from '../types/report'
 import { useSiteSettings } from '../context/SiteSettingsContext'
 import { useAuth } from '../context/AuthContext'
+import { api } from '../lib/api'
+import { startCheckout } from '../lib/cashfree'
 
 interface ReportCardProps {
   report: Report
@@ -56,8 +60,11 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
   const [birthTime, setBirthTime] = useState('')
   const [birthTimeUnknown, setBirthTimeUnknown] = useState(false)
   const [birthPlace, setBirthPlace] = useState('')
-  const [orderNotes, setOrderNotes] = useState('')
+  const [reportDetails, setReportDetails] = useState('')
+  const [consentAgreed, setConsentAgreed] = useState(false)
+
   const [formError, setFormError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     if (user && showOrderModal) {
@@ -73,64 +80,89 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
     setShowOrderModal(true)
   }
 
-  const handleProceedToWhatsApp = (e?: React.FormEvent) => {
-    if (e) e.preventDefault()
+  // Handle Cashfree Online Checkout
+  const handleProceedToPayment = async (e: React.FormEvent) => {
+    e.preventDefault()
     setFormError('')
 
     const nameToUse = buyerName.trim()
-    const phoneToUse = buyerPhone.trim()
+    const rawPhone = buyerPhone.trim().replace(/\D/g, '').slice(-10)
+    const emailToUse = buyerEmail.trim()
+    const detailsToUse = reportDetails.trim()
 
     if (!nameToUse || nameToUse.length < 2) {
       setFormError('Please enter your full name (at least 2 characters).')
       return
     }
 
-    if (!phoneToUse || phoneToUse.replace(/\D/g, '').length < 8) {
-      setFormError('Please enter a valid WhatsApp number (at least 8 digits).')
+    if (rawPhone.length !== 10) {
+      setFormError('Please enter a valid 10-digit WhatsApp number.')
       return
     }
 
-    const emailToUse = buyerEmail.trim() || user?.email || null
+    if (!emailToUse || !emailToUse.includes('@')) {
+      setFormError('Please enter a valid email address for receiving your invoice and report updates.')
+      return
+    }
 
+    if (!detailsToUse || detailsToUse.length < 5) {
+      setFormError('Please provide details regarding the person or area of concern (at least 5 characters).')
+      return
+    }
+
+    if (!consentAgreed) {
+      setFormError('Please agree to the sacred report terms and consent to proceed.')
+      return
+    }
+
+    try {
+      setIsSubmitting(true)
+      const res = await api.post<{ orderId: string; paymentSessionId: string }>(
+        '/api/payments/report-order',
+        {
+          reportId: report.id,
+          name: nameToUse,
+          whatsapp_number: rawPhone,
+          email: emailToUse,
+          gender: buyerGender || null,
+          birth_date: birthDate || null,
+          birth_time: birthTimeUnknown ? null : birthTime || null,
+          birth_time_unknown: birthTimeUnknown,
+          birth_place: birthPlace.trim() || null,
+          details: detailsToUse,
+          notes: null,
+          consent: true,
+        }
+      )
+
+      if (res?.paymentSessionId) {
+        setShowOrderModal(false)
+        await startCheckout(res.paymentSessionId)
+      } else {
+        throw new Error('No payment session received from server.')
+      }
+    } catch (err: any) {
+      console.error('[ReportCard:Payment] Error:', err)
+      setFormError(err?.message || 'Failed to initiate payment. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Fallback direct WhatsApp enquiry
+  const handleOpenWhatsApp = () => {
+    const nameToUse = buyerName.trim() || 'Seeker'
     const messageLines = [
-      `Namaste Anushka ji, I would like to order the *${report.title}* report (₹${report.price.toLocaleString('en-IN')}).`,
-      ``,
-      `*Order Details:*`,
-      `• Name: ${nameToUse}`,
-      `• WhatsApp: ${phoneToUse}`,
-      emailToUse ? `• Email: ${emailToUse}` : null,
-      buyerGender ? `• Gender: ${buyerGender.charAt(0).toUpperCase() + buyerGender.slice(1)}` : null,
-      birthDate ? `• Date of Birth: ${birthDate}` : null,
-      birthTimeUnknown ? `• Time of Birth: Time Unknown` : birthTime ? `• Time of Birth: ${birthTime}` : null,
-      birthPlace.trim() ? `• Place of Birth: ${birthPlace.trim()}` : null,
-      orderNotes.trim() ? `• Specific Questions: ${orderNotes.trim()}` : null,
-      ``,
-      `Looking forward to receiving my personalised report.`,
+      `Namaste Anushka ji, I am interested in the *${report.title}* report (₹${report.price.toLocaleString('en-IN')}).`,
+      `My Name: ${nameToUse}`,
+      buyerPhone ? `Phone: ${buyerPhone}` : null,
+      reportDetails.trim() ? `Details: ${reportDetails.trim()}` : null,
+      `Please guide me on how to proceed.`,
     ]
       .filter(Boolean)
       .join('\n')
 
     const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(messageLines)}`
-
-    // Asynchronously trigger server order creation & admin email notification to yanushka655@gmail.com
-    fetch(`/api/reports/${report.id}/order`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: nameToUse,
-        whatsapp_number: phoneToUse,
-        email: emailToUse,
-        gender: buyerGender || null,
-        birth_date: birthDate || null,
-        birth_time: birthTimeUnknown ? null : birthTime || null,
-        birth_time_unknown: birthTimeUnknown,
-        birth_place: birthPlace.trim() || null,
-        notes: orderNotes.trim() || null,
-      }),
-    }).catch((err) => console.warn('[ReportCard:Order] Notification error:', err))
-
-    // Open WhatsApp immediately within user gesture context so popup blockers never intercept it
-    setShowOrderModal(false)
     window.open(waUrl, '_blank', 'noopener,noreferrer')
   }
 
@@ -138,7 +170,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
     <>
       <article className="bg-white rounded-2xl border border-secondary/15 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col group hover:-translate-y-1">
         {/* Cover Image or Celestial Placeholder */}
-        <div className="relative h-48 sm:h-52 w-full bg-gradient-to-br from-[#1E1B4B] via-[#2E2A5C] to-[#3B2A70] border-b border-[#C9A227]/30 overflow-hidden flex items-center justify-center">
+        <div className="relative h-44 sm:h-48 w-full bg-gradient-to-br from-[#1E1B4B] via-[#2E2A5C] to-[#3B2A70] border-b border-[#C9A227]/30 overflow-hidden flex items-center justify-center">
           {report.cover_image_url ? (
             <img
               src={report.cover_image_url}
@@ -148,107 +180,101 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
               decoding="async"
             />
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center relative select-none">
-              <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#C9A227_1px,transparent_1px)] [background-size:16px_16px]" />
-              <div className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm border border-[#C9A227]/40 flex items-center justify-center mb-2 shadow-inner">
-                <FileText className="w-7 h-7 text-[#C9A227]" />
+            <div className="w-full h-full flex flex-col items-center justify-center p-4 sm:p-6 text-center relative select-none">
+              <svg
+                className="absolute inset-0 w-full h-full opacity-20 pointer-events-none"
+                viewBox="0 0 200 120"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle cx="100" cy="60" r="50" stroke="#C9A227" strokeWidth="1" strokeDasharray="3 3" />
+                <circle cx="100" cy="60" r="35" stroke="#EFEAF8" strokeWidth="1" />
+                <circle cx="100" cy="60" r="20" stroke="#C9A227" strokeWidth="0.75" />
+              </svg>
+
+              <div className="w-12 h-12 rounded-full bg-ivory/10 backdrop-blur-md flex items-center justify-center shadow-xs mb-2 border border-[#C9A227]/40 relative z-10 group-hover:scale-110 transition-transform">
+                <FileText className="w-6 h-6 text-[#C9A227]" />
               </div>
-              <span className="text-xs uppercase tracking-widest text-[#C9A227] font-semibold">
-                Personalised Report
+
+              <span className="font-heading text-base sm:text-lg text-ivory font-bold line-clamp-2 px-3 relative z-10 hero-text-shadow">
+                {report.title}
               </span>
-              <span className="text-[11px] text-white/70 mt-0.5">Handcrafted PDF</span>
             </div>
           )}
 
-          {/* Badge */}
-          {report.badge && BADGE_CONFIG[report.badge] && (
-            <div className="absolute top-3 left-3 z-10">
+          {/* Top Badges */}
+          <div className="absolute top-2.5 left-2.5 right-2.5 flex items-center justify-between gap-1.5 pointer-events-none">
+            {report.badge && BADGE_CONFIG[report.badge] ? (
               <span
-                className={`text-[11px] uppercase tracking-wider px-2.5 py-1 rounded-full shadow-md ${
-                  BADGE_CONFIG[report.badge].className
-                }`}
+                className={`text-[10px] sm:text-[11px] px-2.5 py-0.5 rounded-full shadow-xs ${BADGE_CONFIG[report.badge].className}`}
               >
                 {BADGE_CONFIG[report.badge].label}
               </span>
-            </div>
-          )}
+            ) : <span />}
 
-          {/* PDF Format Tag */}
-          <div className="absolute top-3 right-3 z-10 bg-black/50 backdrop-blur-md text-[#FBF7EE] text-[10px] font-semibold px-2 py-0.5 rounded-md border border-white/20">
-            PDF Report
+            <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold uppercase tracking-wider bg-[#2E2A5C]/80 backdrop-blur-sm text-[#FBF7EE] border border-[#C9A227]/40">
+              Vedic Analysis
+            </span>
           </div>
         </div>
 
-        {/* Content Body */}
-        <div className="p-5 sm:p-6 flex-1 flex flex-col justify-between">
+        {/* Content */}
+        <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
           <div>
-            {/* Title */}
-            <h3 className="font-heading text-lg sm:text-xl font-bold text-[#2B2A3D] line-clamp-2 leading-snug group-hover:text-[#5B3E96] transition-colors">
+            <h3 className="font-heading text-lg sm:text-xl font-bold text-primary mb-1 line-clamp-1 group-hover:text-secondary transition-colors">
               {report.title}
             </h3>
 
-            {/* Tagline (Generic fallback if null) */}
-            <p className="text-xs sm:text-sm text-ink/70 mt-1 line-clamp-1 italic">
-              {report.tagline || 'A personalised report prepared for you.'}
-            </p>
-
-            {/* Description Snippet */}
-            {report.description && (
-              <p className="text-xs sm:text-sm text-ink/80 mt-2.5 line-clamp-2 leading-relaxed">
-                {report.description}
+            {report.tagline && (
+              <p className="text-xs font-medium text-secondary/90 mb-2 line-clamp-1">
+                {report.tagline}
               </p>
             )}
 
-            {/* Included Bullets Preview */}
-            {Array.isArray(report.included) && report.included.length > 0 && (
-              <div className="mt-4 pt-3 border-t border-secondary/10">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5B3E96] mb-2">
-                  What's Included:
-                </p>
-                <ul className="space-y-1.5">
-                  {report.included.slice(0, 3).map((item, idx) => (
-                    <li key={idx} className="flex items-start gap-1.5 text-xs text-ink/85">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-[#C9A227] shrink-0 mt-0.5" />
-                      <span className="line-clamp-1">{item}</span>
-                    </li>
-                  ))}
-                  {report.included.length > 3 && (
-                    <li className="text-[11px] text-[#5B3E96] font-medium pl-5">
-                      +{report.included.length - 3} more insights included
-                    </li>
-                  )}
-                </ul>
+            <p className="text-ink/75 text-xs sm:text-sm leading-relaxed mb-3 line-clamp-2">
+              {report.description}
+            </p>
+
+            {/* Inclusions Highlights */}
+            {report.included && report.included.length > 0 && (
+              <div className="mb-3 pb-3 border-b border-mist space-y-1">
+                {report.included.slice(0, 3).map((item, idx) => (
+                  <div key={idx} className="flex items-start gap-1.5 text-xs text-ink/80">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-[#C9A227] shrink-0 mt-0.5" />
+                    <span className="truncate">{item}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Pricing & Footer Actions */}
-          <div className="mt-5 pt-4 border-t border-secondary/10">
-            {/* Price section */}
-            <div className="flex items-baseline gap-2 mb-3">
-              <span className="text-xl sm:text-2xl font-bold text-[#2B2A3D]">
-                {report.price === 0 ? 'Free' : `₹${report.price.toLocaleString('en-IN')}`}
-              </span>
-
-              {report.original_price && report.original_price > report.price && (
-                <span className="text-sm text-ink/50 line-through">
-                  ₹{report.original_price.toLocaleString('en-IN')}
+          {/* Pricing & CTA */}
+          <div className="pt-1">
+            <div className="flex items-baseline justify-between gap-2 mb-3">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-heading text-xl sm:text-2xl font-bold text-primary">
+                  {report.price === 0 ? 'Free' : `₹${report.price.toLocaleString('en-IN')}`}
                 </span>
-              )}
 
-              {report.discount_percent && report.discount_percent > 0 && (
-                <span className="text-[11px] font-bold text-[#5B3E96] bg-[#5B3E96]/10 px-2 py-0.5 rounded-full">
-                  {report.discount_percent}% OFF
+                {report.original_price && report.original_price > report.price && (
+                  <span className="text-xs sm:text-sm text-[#2B2A3D]/50 line-through font-normal">
+                    ₹{report.original_price.toLocaleString('en-IN')}
+                  </span>
+                )}
+              </div>
+
+              {report.discount_percent != null && report.discount_percent > 0 && (
+                <span className="bg-[#F8E7A2] text-[#1E1B4B] text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full shadow-xs shrink-0">
+                  Save {report.discount_percent}%
                 </span>
               )}
             </div>
 
-            {/* Buttons */}
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => setShowDetailsModal(true)}
-                className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl border border-secondary/30 text-ink/80 hover:text-secondary hover:bg-mist/60 text-xs sm:text-sm font-semibold transition-all focus:outline-none"
+                className="w-full text-xs font-semibold py-2 px-2 sm:px-3 rounded-xl border border-secondary/30 text-secondary hover:bg-mist transition-colors flex items-center justify-center gap-1 min-h-[38px]"
               >
                 <Info className="w-3.5 h-3.5" />
                 <span>Details</span>
@@ -257,9 +283,9 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
               <button
                 type="button"
                 onClick={handleOrderClick}
-                className="w-full inline-flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-gradient-to-r from-[#5B3E96] to-[#2E2A5C] text-[#FBF7EE] hover:opacity-95 text-xs sm:text-sm font-semibold shadow-sm transition-all focus:outline-none"
+                className="w-full text-xs font-semibold py-2 px-2 sm:px-3 rounded-xl bg-[#2E2A5C] text-[#FBF7EE] hover:bg-[#3C3775] transition-all flex items-center justify-center gap-1 shadow-sm active:scale-[0.99] min-h-[38px]"
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#C9A227]" />
+                <CreditCard className="w-3.5 h-3.5 text-[#C9A227]" />
                 <span>Order Now</span>
               </button>
             </div>
@@ -267,12 +293,11 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
         </div>
       </article>
 
-      {/* 1. VIEW DETAILS MODAL */}
+      {/* 1. DETAILS MODAL */}
       {showDetailsModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#FBF7EE] w-full max-w-lg rounded-2xl shadow-2xl border border-secondary/20 overflow-hidden max-h-[90vh] flex flex-col">
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-[#1E1B4B] to-[#2E2A5C] text-white p-5 sm:p-6 relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#FBF7EE] w-full max-w-lg rounded-2xl shadow-2xl border border-secondary/20 overflow-hidden text-[#2B2A3D] max-h-[90vh] flex flex-col">
+            <div className="bg-gradient-to-r from-[#1E1B4B] to-[#2E2A5C] text-white p-5 sm:p-6 relative shrink-0">
               <button
                 type="button"
                 onClick={() => setShowDetailsModal(false)}
@@ -281,116 +306,51 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
               >
                 <X className="w-5 h-5" />
               </button>
-
-              {report.badge && BADGE_CONFIG[report.badge] && (
-                <span
-                  className={`inline-block text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 ${
-                    BADGE_CONFIG[report.badge].className
-                  }`}
-                >
-                  {BADGE_CONFIG[report.badge].label}
-                </span>
-              )}
-
-              <h2 className="text-xl sm:text-2xl font-bold font-heading text-[#FBF7EE]">
+              <h3 className="text-xl font-bold text-[#FBF7EE] font-heading pr-8">
                 {report.title}
-              </h2>
-              <p className="text-xs sm:text-sm text-[#C9A227] mt-1 font-medium italic">
-                {report.tagline || 'A personalised report prepared for you.'}
-              </p>
+              </h3>
+              {report.tagline && (
+                <p className="text-xs text-[#C9A227] font-medium mt-1">
+                  {report.tagline}
+                </p>
+              )}
             </div>
 
-            {/* Modal Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto space-y-5 text-[#2B2A3D]">
-              {/* Description */}
-              {report.description && (
-                <div>
-                  <h4 className="text-xs uppercase tracking-wider font-bold text-[#5B3E96] mb-1.5">
-                    About this report
-                  </h4>
-                  <p className="text-sm leading-relaxed whitespace-pre-line text-ink/85">
-                    {report.description}
-                  </p>
-                </div>
-              )}
+            <div className="p-5 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm">
+              <p className="text-[#2B2A3D]/85 leading-relaxed">
+                {report.description}
+              </p>
 
-              {/* What's Included */}
-              {Array.isArray(report.included) && report.included.length > 0 && (
-                <div className="bg-white p-4 rounded-xl border border-secondary/15">
-                  <h4 className="text-xs uppercase tracking-wider font-bold text-[#5B3E96] mb-3 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#C9A227]" />
-                    What you will receive
+              {report.included && report.included.length > 0 && (
+                <div>
+                  <h4 className="font-heading text-sm font-bold text-[#2E2A5C] mb-2 uppercase tracking-wider">
+                    What&apos;s Included In This Report:
                   </h4>
                   <ul className="space-y-2">
                     {report.included.map((item, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-xs sm:text-sm text-ink/90">
+                      <li key={idx} className="flex items-start gap-2">
                         <CheckCircle2 className="w-4 h-4 text-[#C9A227] shrink-0 mt-0.5" />
-                        <span>{item}</span>
+                        <span className="text-[#2B2A3D]/90">{item}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
               )}
 
-              {/* How it works */}
-              <div className="bg-mist/50 p-4 rounded-xl border border-secondary/15 space-y-2.5">
-                <h4 className="text-xs uppercase tracking-wider font-bold text-[#2E2A5C]">
-                  How the Personalised Process Works
-                </h4>
-                <div className="grid grid-cols-1 gap-2 text-xs text-ink/80">
-                  <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-[#5B3E96] text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
-                      1
-                    </span>
-                    <span>
-                      <strong>Submit Birth Details:</strong> Share your exact Date of Birth, Time of Birth, and Place of Birth.
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-[#5B3E96] text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
-                      2
-                    </span>
-                    <span>
-                      <strong>Manual Expert Analysis:</strong> Our certified astrologers study your planetary positions and numerological charts by hand (no auto-generated generic text).
-                    </span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span className="w-5 h-5 rounded-full bg-[#5B3E96] text-white flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">
-                      3
-                    </span>
-                    <span>
-                      <strong>Custom PDF Delivery:</strong> Your confidential, comprehensive PDF report is sent directly to your WhatsApp or Email within 24 to 48 hours.
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Price summary & Policy */}
               <div className="pt-2 border-t border-secondary/15 flex items-center justify-between">
-                <div>
-                  <span className="text-xs text-ink/60 block">Price</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-xl font-bold text-[#2B2A3D]">
-                      {report.price === 0 ? 'Free' : `₹${report.price.toLocaleString('en-IN')}`}
-                    </span>
-                    {report.original_price && report.original_price > report.price && (
-                      <span className="text-xs text-ink/50 line-through">
-                        ₹{report.original_price.toLocaleString('en-IN')}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
+                <span className="font-heading text-lg font-bold text-[#2E2A5C]">
+                  {report.price === 0 ? 'Free' : `₹${report.price.toLocaleString('en-IN')}`}
+                </span>
                 <button
                   type="button"
                   onClick={() => {
                     setShowDetailsModal(false)
-                    setShowOrderModal(true)
+                    handleOrderClick()
                   }}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#5B3E96] to-[#2E2A5C] text-[#FBF7EE] text-sm font-semibold hover:opacity-95 shadow-md transition-all"
+                  className="px-5 py-2.5 rounded-xl bg-[#2E2A5C] text-[#FBF7EE] hover:bg-[#3C3775] font-semibold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
                 >
-                  <Sparkles className="w-4 h-4 text-[#C9A227]" />
-                  <span>Order on WhatsApp</span>
+                  <CreditCard className="w-3.5 h-3.5 text-[#C9A227]" />
+                  <span>Order Now</span>
                 </button>
               </div>
             </div>
@@ -398,7 +358,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
         </div>
       )}
 
-      {/* 2. ORDER NOW / WHATSAPP MODAL */}
+      {/* 2. ORDER / CASHFREE PAYMENT MODAL */}
       {showOrderModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-[#FBF7EE] w-full max-w-lg rounded-2xl shadow-2xl border border-secondary/20 overflow-hidden text-[#2B2A3D] max-h-[92vh] flex flex-col">
@@ -415,28 +375,21 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
               <div className="flex items-center gap-2 mb-1">
                 <Sparkles className="w-4 h-4 text-[#C9A227]" />
                 <span className="text-xs uppercase tracking-wider text-[#C9A227] font-semibold">
-                  Personalised Order
+                  Personalised Vedic Report Order
                 </span>
               </div>
               <h3 className="text-lg sm:text-xl font-bold text-[#FBF7EE] font-heading pr-8">
                 {report.title}
               </h3>
               <p className="text-xs text-[#C9A227] font-semibold mt-1">
-                Price: {report.price === 0 ? 'Free' : `₹${report.price.toLocaleString('en-IN')}`}
+                Total Fee: ₹{report.price.toLocaleString('en-IN')}
               </p>
             </div>
 
             {/* Form */}
-            <form onSubmit={handleProceedToWhatsApp} className="p-5 sm:p-6 overflow-y-auto space-y-4">
-              <div className="bg-mist/70 p-3 rounded-xl border border-secondary/15 text-xs text-ink/85 leading-relaxed">
-                <p className="font-semibold text-[#2E2A5C] mb-0.5">Direct WhatsApp Ordering & Confirmation</p>
-                <p>
-                  Share your details below so our team can craft your accurate report. Clicking continue opens WhatsApp to complete your order, and your request details will be sent automatically.
-                </p>
-              </div>
-
+            <form onSubmit={handleProceedToPayment} className="p-5 sm:p-6 overflow-y-auto space-y-4">
               {formError && (
-                <div className="p-2.5 rounded-lg bg-secondary/15 border border-secondary/40 text-xs font-semibold text-[#5B3E96]">
+                <div className="p-3 rounded-xl bg-[#EFEAF8] border border-[#5B3E96]/30 text-xs font-semibold text-[#5B3E96] animate-in fade-in">
                   {formError}
                 </div>
               )}
@@ -445,7 +398,7 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#2E2A5C] mb-1">
-                    Your Name <span className="text-[#C9A227]">*</span>
+                    Your Full Name <span className="text-[#C9A227]">*</span>
                   </label>
                   <div className="relative">
                     <User className="w-4 h-4 text-secondary absolute left-3 top-3 pointer-events-none" />
@@ -470,10 +423,10 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
                     <input
                       type="tel"
                       required
-                      minLength={8}
+                      maxLength={10}
                       value={buyerPhone}
-                      onChange={(e) => setBuyerPhone(e.target.value)}
-                      placeholder="e.g. 9876543210"
+                      onChange={(e) => setBuyerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      placeholder="10-digit number"
                       className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40"
                     />
                   </div>
@@ -484,15 +437,16 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
                   <label className="block text-xs font-bold uppercase tracking-wider text-[#2E2A5C] mb-1">
-                    Email Address <span className="text-xs font-normal text-ink/60">(Optional)</span>
+                    Email Address <span className="text-[#C9A227]">*</span>
                   </label>
                   <div className="relative">
                     <Mail className="w-4 h-4 text-secondary absolute left-3 top-3 pointer-events-none" />
                     <input
                       type="email"
+                      required
                       value={buyerEmail}
                       onChange={(e) => setBuyerEmail(e.target.value)}
-                      placeholder="For PDF report copy"
+                      placeholder="For payment & PDF delivery"
                       className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40"
                     />
                   </div>
@@ -515,10 +469,28 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
                 </div>
               </div>
 
-              {/* Birth / Personal Details */}
+              {/* Details Text Area (Free-text for buyer) */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#2E2A5C] mb-1">
+                  Report Subject &amp; Focus Details <span className="text-[#C9A227]">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  minLength={5}
+                  maxLength={1000}
+                  value={reportDetails}
+                  onChange={(e) => setReportDetails(e.target.value)}
+                  placeholder="Enter the name of the person/business or your core area of concern (e.g., career switch timing, marital compatibility, business expansion)..."
+                  className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40 leading-relaxed"
+                />
+                <span className="text-[11px] text-ink/60">Minimum 5 characters.</span>
+              </div>
+
+              {/* Birth / Personal Details (Optional) */}
               <div className="pt-2 border-t border-secondary/15">
                 <p className="text-xs uppercase tracking-wider font-bold text-[#5B3E96] mb-2">
-                  Birth / Personal Details <span className="text-xs font-normal text-ink/60 lowercase">(optional – can also share in WhatsApp)</span>
+                  Birth Details <span className="text-xs font-normal text-ink/60 lowercase">(optional – adds planetary precision)</span>
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
@@ -579,31 +551,51 @@ export const ReportCard: React.FC<ReportCardProps> = ({ report }) => {
                 </div>
               </div>
 
-              {/* Specific Questions / Notes */}
-              <div>
-                <label className="block text-xs font-medium text-[#2B2A3D] mb-1 flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5 text-secondary" />
-                  Specific Questions or Focus Area <span className="text-xs font-normal text-ink/60">(Optional)</span>
+              {/* Consent Checkbox */}
+              <div className="pt-2">
+                <label className="flex items-start gap-2.5 text-xs text-[#2B2A3D]/85 cursor-pointer leading-relaxed">
+                  <input
+                    type="checkbox"
+                    checked={consentAgreed}
+                    onChange={(e) => setConsentAgreed(e.target.checked)}
+                    className="rounded text-[#5B3E96] focus:ring-0 mt-0.5"
+                  />
+                  <span>
+                    I confirm the above details are accurate and agree to the 24-48 hr report analysis timeline.
+                  </span>
                 </label>
-                <textarea
-                  rows={2}
-                  value={orderNotes}
-                  onChange={(e) => setOrderNotes(e.target.value)}
-                  placeholder="e.g. Career transition timing, marriage prospects, health concern..."
-                  maxLength={500}
-                  className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40 resize-none"
-                />
               </div>
 
               {/* CTA */}
-              <div className="pt-2 border-t border-secondary/15">
+              <div className="pt-3 border-t border-secondary/15 space-y-2">
                 <button
                   type="submit"
-                  className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-[#5B3E96] to-[#2E2A5C] text-[#FBF7EE] hover:opacity-95 font-semibold text-sm shadow-md transition-all active:scale-[0.99]"
+                  disabled={isSubmitting}
+                  className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#2E2A5C] hover:bg-[#3C3775] text-[#FBF7EE] font-semibold text-sm shadow-md transition-all active:scale-[0.99] disabled:opacity-60"
                 >
-                  <MessageCircle className="w-4 h-4 text-[#C9A227]" />
-                  <span>Continue to WhatsApp (₹{report.price.toLocaleString('en-IN')})</span>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-[#C9A227]" />
+                      <span>Redirecting to Payment...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Lock className="w-4 h-4 text-[#C9A227]" />
+                      <span>Pay Online via Cashfree (₹{report.price.toLocaleString('en-IN')})</span>
+                    </>
+                  )}
                 </button>
+
+                <div className="text-center pt-1">
+                  <button
+                    type="button"
+                    onClick={handleOpenWhatsApp}
+                    className="text-xs text-[#5B3E96] hover:underline font-semibold inline-flex items-center gap-1"
+                  >
+                    <MessageCircle className="w-3.5 h-3.5 text-[#C9A227]" />
+                    <span>Have questions first? Enquire via WhatsApp</span>
+                  </button>
+                </div>
               </div>
             </form>
           </div>

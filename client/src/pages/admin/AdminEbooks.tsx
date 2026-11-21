@@ -133,6 +133,15 @@ const SortableEbookItem: React.FC<SortableEbookItemProps> = ({
                 Hidden
               </span>
             )}
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                item.price && item.price > 0
+                  ? 'bg-[#C9A227] text-[#1E1B4B]'
+                  : 'bg-[#EFEAF8] text-[#5B3E96] border border-[#5B3E96]/20'
+              }`}
+            >
+              {item.price && item.price > 0 ? `₹${item.price.toLocaleString('en-IN')}` : 'Free'}
+            </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 text-xs text-[#2B2A3D]/65">
@@ -243,6 +252,7 @@ export const AdminEbooks: React.FC = () => {
   const [formDescription, setFormDescription] = useState('')
   const [formCoverUrl, setFormCoverUrl] = useState('')
   const [formIsVisible, setFormIsVisible] = useState(true)
+  const [formPrice, setFormPrice] = useState<number>(0)
   const [formPdfFile, setFormPdfFile] = useState<File | null>(null)
   const [uploadingCover, setUploadingCover] = useState(false)
   const [savingEbook, setSavingEbook] = useState(false)
@@ -398,6 +408,7 @@ export const AdminEbooks: React.FC = () => {
     setFormDescription('')
     setFormCoverUrl('')
     setFormIsVisible(true)
+    setFormPrice(0)
     setFormPdfFile(null)
     setFormError(null)
     setStorageUnavailable(false)
@@ -411,6 +422,7 @@ export const AdminEbooks: React.FC = () => {
     setFormDescription(ebook.description || '')
     setFormCoverUrl(ebook.cover_image_url || '')
     setFormIsVisible(ebook.is_visible)
+    setFormPrice(ebook.price || 0)
     setFormPdfFile(null)
     setFormError(null)
     setStorageUnavailable(false)
@@ -518,6 +530,7 @@ export const AdminEbooks: React.FC = () => {
         formData.append('cover_image_url', formCoverUrl.trim())
       }
       formData.append('is_visible', String(formIsVisible))
+      formData.append('price', String(formPrice || 0))
 
       if (formPdfFile) {
         formData.append('file', formPdfFile)
@@ -963,6 +976,33 @@ export const AdminEbooks: React.FC = () => {
                   placeholder="A concise summary of what seekers will learn from this sacred guide..."
                   className="w-full px-3.5 py-2.5 text-xs sm:text-sm rounded-xl border border-[#5B3E96]/20 bg-[#FBF7EE]/40 text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-[#5B3E96]/40 leading-relaxed"
                 />
+              </div>
+
+              {/* Price in INR */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#2E2A5C] mb-1.5">
+                  Price in INR (₹) — Set to 0 for Free
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold text-[#5B3E96]">
+                    ₹
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100000}
+                    step={1}
+                    value={formPrice}
+                    onChange={(e) => setFormPrice(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    placeholder="0 for free"
+                    className="w-full pl-8 pr-3.5 py-2.5 text-sm rounded-xl border border-[#5B3E96]/20 bg-[#FBF7EE]/40 text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-[#5B3E96]/40 min-h-[44px]"
+                  />
+                </div>
+                <span className="text-[11px] text-[#2B2A3D]/65 mt-1 block">
+                  {formPrice > 0
+                    ? `Paid Ebook (Seekers will pay ₹${formPrice.toLocaleString('en-IN')} via Cashfree)`
+                    : 'Free Ebook (Instant download for seekers without payment)'}
+                </span>
               </div>
 
               {/* Cover Image URL / Upload */}

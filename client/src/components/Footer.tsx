@@ -136,6 +136,14 @@ export const Footer: React.FC = () => {
                   Contact Us
                 </Link>
               </li>
+              <li>
+                <Link
+                  to="/contact#terms"
+                  className="text-ivory/80 hover:text-accent transition-colors"
+                >
+                  Terms &amp; Conditions
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -202,12 +210,16 @@ export const Footer: React.FC = () => {
         {/* Bottom copyright line */}
         <div className="pt-6 sm:pt-8 border-t border-secondary/30 flex flex-col sm:flex-row items-center justify-between text-xs text-ivory/60 gap-3 sm:gap-4 text-center sm:text-left">
           <p>© 2026 YugSkills Learning Institute. All rights reserved.</p>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center sm:justify-end">
+            <Link to="/contact#terms" className="hover:text-accent transition-colors">
+              Terms &amp; Conditions
+            </Link>
+            <span className="text-ivory/30">•</span>
             <Link to="/admin/login" className="hover:text-accent transition-colors">
               Portal Login
             </Link>
             <span className="text-ivory/30">•</span>
-            <p className="text-ivory/50">Designed with Spiritual Wisdom & Elegance</p>
+            <p className="text-ivory/50">Designed with Spiritual Wisdom &amp; Elegance</p>
           </div>
         </div>
       </Container>

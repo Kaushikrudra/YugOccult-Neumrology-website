@@ -17,6 +17,7 @@ const Contact = lazy(() => import('./pages/Contact'))
 const Login = lazy(() => import('./pages/Login'))
 const Signup = lazy(() => import('./pages/Signup'))
 const Account = lazy(() => import('./pages/Account'))
+const PaymentStatus = lazy(() => import('./pages/PaymentStatus'))
 
 // Lazy-loaded administrative views
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'))
@@ -28,6 +29,7 @@ const AdminEbooks = lazy(() => import('./pages/admin/AdminEbooks'))
 const AdminReports = lazy(() => import('./pages/admin/AdminReports'))
 const AdminReportOrders = lazy(() => import('./pages/admin/AdminReportOrders'))
 const AdminTestimonials = lazy(() => import('./pages/admin/AdminTestimonials'))
+const AdminBookings = lazy(() => import('./pages/admin/AdminBookings'))
 const AdminConsultation = lazy(() => import('./pages/admin/AdminConsultation'))
 const AdminEnquiries = lazy(() => import('./pages/admin/AdminEnquiries'))
 const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'))
@@ -81,6 +83,7 @@ export const App: React.FC = () => {
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/account" element={<Account />} />
+              <Route path="/payment/status" element={<PaymentStatus />} />
             </Route>
 
             {/* Admin Authentication Route (No Navbar/Footer/WhatsApp) */}
@@ -96,6 +99,7 @@ export const App: React.FC = () => {
                 <Route path="reports" element={<AdminReports />} />
                 <Route path="report-orders" element={<AdminReportOrders />} />
                 <Route path="testimonials" element={<AdminTestimonials />} />
+                <Route path="bookings" element={<AdminBookings />} />
                 <Route path="consultation" element={<AdminConsultation />} />
                 <Route path="enquiries" element={<AdminEnquiries />} />
                 <Route path="orders" element={<AdminOrders />} />

@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   Mail,
   Phone,
@@ -9,6 +10,14 @@ import {
   CheckCircle2,
   AlertCircle,
   MessageCircle,
+  FileText,
+  ShieldCheck,
+  Scale,
+  BookOpen,
+  CreditCard,
+  RefreshCw,
+  HelpCircle,
+  Lock,
 } from 'lucide-react'
 import Container from '../components/Container'
 import Button from '../components/Button'
@@ -33,6 +42,23 @@ interface FormErrors {
 
 export const Contact: React.FC = () => {
   const { settings } = useSiteSettings()
+  const location = useLocation()
+
+  // Smoothly scroll to Terms & Conditions section if redirected via #terms
+  useEffect(() => {
+    if (location.hash === '#terms') {
+      const scrollToTerms = () => {
+        const el = document.getElementById('terms')
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }
+      }
+      // Small timeout ensures DOM elements and fonts are fully mounted
+      const timer = setTimeout(scrollToTerms, 150)
+      return () => clearTimeout(timer)
+    }
+  }, [location.hash])
+
   const rawWhatsApp = (settings.whatsapp_number || '918922946307').replace(/\D/g, '')
   const cleanWhatsApp = rawWhatsApp.length === 10 ? `91${rawWhatsApp}` : rawWhatsApp
   const hasAnyContactCard = Boolean(
@@ -575,6 +601,214 @@ export const Contact: React.FC = () => {
                 )}
               </div>
             </div>
+          </div>
+        </Container>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* TERMS & CONDITIONS SECTION */}
+      {/* ========================================================================= */}
+      <section
+        id="terms"
+        className="scroll-mt-16 py-16 sm:py-24 bg-[#FBF7EE] border-t border-[#5B3E96]/15 relative"
+      >
+        <Container>
+          {/* Section Header */}
+          <div className="max-w-3xl mx-auto text-center mb-12 sm:mb-16">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#EFEAF8] border border-[#5B3E96]/30 text-[#5B3E96] text-xs font-bold uppercase tracking-wider mb-4">
+              <Scale className="w-3.5 h-3.5" />
+              <span>Legal &amp; Sacred Advisory Terms</span>
+            </div>
+            <h2 className="font-heading text-3xl sm:text-4xl lg:text-5xl font-bold text-[#2E2A5C] tracking-tight mb-4">
+              Terms &amp; Conditions
+            </h2>
+            <p className="text-sm sm:text-base text-[#2B2A3D]/75 leading-relaxed">
+              Welcome to <strong>YugSkills Learning Institute</strong>. Please review these official
+              terms, 1-year course validity policies, payment security guidelines, and sacred consultation
+              ethics governing your use of our platform.
+            </p>
+            <div className="mt-3 text-xs text-[#2B2A3D]/60 flex items-center justify-center gap-2">
+              <span>Last Updated: November 2026</span>
+              <span>•</span>
+              <span>Governed under the Laws of India</span>
+            </div>
+          </div>
+
+          {/* Terms Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {/* 1. Agreement & Purpose */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#5B3E96]/15 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#EFEAF8] border border-[#5B3E96]/20 flex items-center justify-center text-[#5B3E96] mb-4">
+                  <Scale className="w-6 h-6" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-[#2E2A5C] mb-2.5">
+                  1. Acceptance &amp; Sacred Purpose
+                </h3>
+                <p className="text-xs sm:text-sm text-[#2B2A3D]/75 leading-relaxed">
+                  By accessing <strong>YugSkills Learning Institute</strong>, purchasing courses,
+                  booking 1-on-1 consultations, or downloading ebooks &amp; reports, you agree to comply with
+                  and be bound by these Terms. All sacred sciences—Vedic Astrology, Numerology, Tarot,
+                  and Vastu—are offered with pure spiritual intent for personal empowerment and conscious living.
+                </p>
+              </div>
+            </div>
+
+            {/* 2. Course Validity (1-Year Access) */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#5B3E96]/15 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#EFEAF8] border border-[#5B3E96]/20 flex items-center justify-center text-[#5B3E96] mb-4">
+                  <BookOpen className="w-6 h-6" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-[#2E2A5C] mb-2.5">
+                  2. 1-Year Course Access &amp; IP
+                </h3>
+                <p className="text-xs sm:text-sm text-[#2B2A3D]/75 leading-relaxed">
+                  Every enrolled or purchased course includes <strong>1-Year (365 days) full access</strong> to
+                  lesson materials, video lectures, and study notes from the grant date. Access expires after 1
+                  year and may be renewed. All lesson resources are protected intellectual property of
+                  Anushka Yadav; sharing, screen-recording, or commercial redistribution is strictly prohibited.
+                </p>
+              </div>
+            </div>
+
+            {/* 3. Consultation Bookings */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#5B3E96]/15 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#EFEAF8] border border-[#5B3E96]/20 flex items-center justify-center text-[#5B3E96] mb-4">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-[#2E2A5C] mb-2.5">
+                  3. 1-on-1 Consultations
+                </h3>
+                <p className="text-xs sm:text-sm text-[#2B2A3D]/75 leading-relaxed">
+                  Consultation appointments (Morning, Afternoon, or Evening slots) are confirmed upon
+                  successful booking and payment. Accurate birth details (Date, exact Time, and Place of Birth)
+                  must be provided for genuine planetary calculations. Rescheduling is available free of charge
+                  when requested at least 24 hours prior to the appointment.
+                </p>
+              </div>
+            </div>
+
+            {/* 4. Personalised Reports & Ebooks */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#5B3E96]/15 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#EFEAF8] border border-[#5B3E96]/20 flex items-center justify-center text-[#5B3E96] mb-4">
+                  <FileText className="w-6 h-6" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-[#2E2A5C] mb-2.5">
+                  4. Reports &amp; Digital Ebooks
+                </h3>
+                <p className="text-xs sm:text-sm text-[#2B2A3D]/75 leading-relaxed">
+                  Custom astrological reports are uniquely prepared and delivered to your account dashboard
+                  within 2 to 5 business days. Digital ebooks are unlocked for instant PDF download upon
+                  payment. Due to the bespoke preparation of reports and immediate access to digital ebooks,
+                  all digital orders are final and non-refundable.
+                </p>
+              </div>
+            </div>
+
+            {/* 5. Payments & Cashfree Security */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#5B3E96]/15 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#EFEAF8] border border-[#5B3E96]/20 flex items-center justify-center text-[#5B3E96] mb-4">
+                  <CreditCard className="w-6 h-6" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-[#2E2A5C] mb-2.5">
+                  5. Payment Security &amp; Gateway
+                </h3>
+                <p className="text-xs sm:text-sm text-[#2B2A3D]/75 leading-relaxed">
+                  All transactions are billed in Indian Rupees (₹) and processed via encrypted, bank-grade
+                  protocols through Cashfree Payment Gateway (supporting UPI, Cards, NetBanking, and Wallets).
+                  YugSkills Learning Institute does not collect, store, or view sensitive payment credentials,
+                  card numbers, or banking PINs.
+                </p>
+              </div>
+            </div>
+
+            {/* 6. Spiritual Guidance Disclaimer */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#5B3E96]/15 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#EFEAF8] border border-[#5B3E96]/20 flex items-center justify-center text-[#5B3E96] mb-4">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-[#2E2A5C] mb-2.5">
+                  6. Spiritual Advisory Disclaimer
+                </h3>
+                <p className="text-xs sm:text-sm text-[#2B2A3D]/75 leading-relaxed">
+                  Astrology, numerology, vastu, and tarot are sacred advisory sciences meant for spiritual
+                  guidance and self-discovery. They do <strong>NOT</strong> substitute for certified medical,
+                  psychiatric, financial, or legal counsel. No deterministic guarantees are made; individual
+                  free will, personal judgment, and karmic actions remain the sole responsibility of the seeker.
+                </p>
+              </div>
+            </div>
+
+            {/* 7. Cancellation & Refunds */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#5B3E96]/15 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#EFEAF8] border border-[#5B3E96]/20 flex items-center justify-center text-[#5B3E96] mb-4">
+                  <RefreshCw className="w-6 h-6" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-[#2E2A5C] mb-2.5">
+                  7. Cancellation &amp; Refunds
+                </h3>
+                <p className="text-xs sm:text-sm text-[#2B2A3D]/75 leading-relaxed">
+                  Consultation appointments may be rescheduled with at least 24 hours advance notice. Cancellations
+                  requested prior to reading preparation may be considered for credit. Missed appointments
+                  without notice will forfeit the booking. Due to instant access, course fees and downloadable
+                  digital ebooks are strictly non-refundable once unlocked.
+                </p>
+              </div>
+            </div>
+
+            {/* 8. Privacy & Confidentiality */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#5B3E96]/15 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#EFEAF8] border border-[#5B3E96]/20 flex items-center justify-center text-[#5B3E96] mb-4">
+                  <Lock className="w-6 h-6" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-[#2E2A5C] mb-2.5">
+                  8. Privacy &amp; Data Sanctity
+                </h3>
+                <p className="text-xs sm:text-sm text-[#2B2A3D]/75 leading-relaxed">
+                  Your personal birth charts, horoscope inquiries, contact details, and consultation recordings
+                  are preserved with the highest spiritual sanctity and strict confidentiality. We maintain
+                  rigorous privacy standards and never sell, trade, or share your private information with
+                  external third parties or advertisers.
+                </p>
+              </div>
+            </div>
+
+            {/* 9. Support & Contact */}
+            <div className="bg-white rounded-3xl p-6 sm:p-7 border border-[#5B3E96]/15 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-[#EFEAF8] border border-[#5B3E96]/20 flex items-center justify-center text-[#5B3E96] mb-4">
+                  <HelpCircle className="w-6 h-6" />
+                </div>
+                <h3 className="font-heading text-lg font-bold text-[#2E2A5C] mb-2.5">
+                  9. Queries &amp; Support
+                </h3>
+                <p className="text-xs sm:text-sm text-[#2B2A3D]/75 leading-relaxed">
+                  If you have any questions or require support regarding your course access, orders, or these
+                  Terms &amp; Conditions, please reach out to our team via the contact form above, official
+                  WhatsApp at <strong>+{cleanWhatsApp}</strong>, or our official helpline.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Acknowledgement Callout */}
+          <div className="max-w-3xl mx-auto p-5 sm:p-6 rounded-3xl bg-white border border-[#C9A227]/40 shadow-xs text-center space-y-2">
+            <div className="flex items-center justify-center gap-2 text-xs font-bold text-[#2E2A5C] uppercase tracking-wider">
+              <Sparkles className="w-4 h-4 text-[#C9A227]" />
+              <span>Sacred Student &amp; Seeker Agreement</span>
+            </div>
+            <p className="text-xs sm:text-sm text-[#2B2A3D]/75 leading-relaxed">
+              By accessing our platform, enrolling in courses, or completing any booking, you acknowledge
+              that you have read, understood, and agreed to abide by these Terms &amp; Conditions and our
+              1-year course validity policy.
+            </p>
           </div>
         </Container>
       </section>

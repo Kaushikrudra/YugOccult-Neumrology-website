@@ -695,8 +695,14 @@ publicRouter.post(
       const ebook = rows[0]
 
       if (ebook.price > 0) {
-        res.status(402).json({ error: 'This ebook is not free yet' })
-        return
+        const purchaseRes = await pool.query(
+          `SELECT id FROM ebook_purchases WHERE ebook_id = $1 AND user_id = $2 LIMIT 1;`,
+          [ebook.id, req.user!.id]
+        )
+        if (purchaseRes.rows.length === 0) {
+          res.status(402).json({ error: 'Purchase required' })
+          return
+        }
       }
 
       if (!isStorageConfigured()) {

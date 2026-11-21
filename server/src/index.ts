@@ -8,6 +8,7 @@ import { authRouter } from './routes/auth'
 import { adminRouter } from './routes/admin'
 import { publicRouter } from './routes/public'
 import { accountRouter } from './routes/account'
+import { paymentsRouter, handlePaymentsWebhook } from './routes/payments'
 import { getJwtSecret } from './middleware/auth'
 import { getLocalUploadsPath, ensureUploadDirs } from './services/storage'
 
@@ -71,7 +72,15 @@ app.use(
   })
 )
 
-// Body parser with 10kb limit
+// Cashfree Webhook route requires raw body for cryptographic HMAC SHA-256 signature verification.
+// Registered BEFORE global express.json() parser.
+app.post(
+  '/api/payments/webhook',
+  express.raw({ type: 'application/json' }),
+  handlePaymentsWebhook
+)
+
+// Body parser with 10kb limit for JSON payloads
 app.use(express.json({ limit: '10kb' }))
 app.use(cookieParser())
 
@@ -99,6 +108,9 @@ app.use('/api/admin', adminRouter)
 
 // User Account & Enrolled Course Materials Routes (/api/account/courses, /api/account/materials)
 app.use('/api/account', accountRouter)
+
+// Payment Routes (Orders, Checkout, Status)
+app.use('/api/payments', paymentsRouter)
 
 // Root Welcome Route
 app.get('/', (_req: Request, res: Response) => {
@@ -132,3 +144,4 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 export default app
+export { app }

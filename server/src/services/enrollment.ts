@@ -17,10 +17,13 @@ export interface EnrollmentRecord {
   source: 'payment' | 'admin' | 'free'
   granted_at: string
   granted_by: string | null
+  expires_at: string | null
 }
 
 /**
- * Helper function to grant or reactivate an individual course enrollment idempotently
+ * Helper function to grant or reactivate an individual course enrollment idempotently.
+ * Every course purchase / enrollment grants 1-Year access validity.
+ * If an enrollment already exists and is expired, it renews it for another 1 year.
  */
 async function grantSingleCourseEnrollment({
   userId,
@@ -37,23 +40,25 @@ async function grantSingleCourseEnrollment({
 
   if (existingRes.rows.length > 0) {
     const existing = existingRes.rows[0]
+    const isExpired = existing.expires_at ? new Date(existing.expires_at) <= new Date() : false
 
-    // Already active -> no-op
-    if (existing.status === 'active') {
+    // Already active and NOT expired -> keep active
+    if (existing.status === 'active' && !isExpired) {
       return {
         enrollment: existing,
         wasAlreadyActive: true,
       }
     }
 
-    // Revoked -> reactivate
+    // Revoked or Expired -> Renew / reactivate for 1 year from now
     const updateRes = await pool.query<EnrollmentRecord>(
       `UPDATE enrollments 
        SET status = 'active',
            source = $1,
            order_id = COALESCE($2, order_id),
            granted_by = $3,
-           granted_at = timezone('utc'::text, now())
+           granted_at = timezone('utc'::text, now()),
+           expires_at = timezone('utc'::text, now()) + INTERVAL '1 year'
        WHERE id = $4
        RETURNING *;`,
       [source, orderId, grantedBy, existing.id]
@@ -65,10 +70,10 @@ async function grantSingleCourseEnrollment({
     }
   }
 
-  // Insert brand new enrollment
+  // Insert brand new enrollment with 1 year validity
   const insertRes = await pool.query<EnrollmentRecord>(
-    `INSERT INTO enrollments (user_id, course_id, order_id, status, source, granted_at, granted_by)
-     VALUES ($1, $2, $3, 'active', $4, timezone('utc'::text, now()), $5)
+    `INSERT INTO enrollments (user_id, course_id, order_id, status, source, granted_at, granted_by, expires_at)
+     VALUES ($1, $2, $3, 'active', $4, timezone('utc'::text, now()), $5, timezone('utc'::text, now()) + INTERVAL '1 year')
      RETURNING *;`,
     [userId, courseId, orderId, source, grantedBy]
   )
@@ -150,6 +155,7 @@ export async function reactivateEnrollment(
     `UPDATE enrollments 
      SET status = 'active',
          granted_at = timezone('utc'::text, now()),
+         expires_at = timezone('utc'::text, now()) + INTERVAL '1 year',
          granted_by = COALESCE($2, granted_by)
      WHERE id = $1
      RETURNING *;`,

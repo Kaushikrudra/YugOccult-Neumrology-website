@@ -1,0 +1,767 @@
+import { Router, Request, Response, NextFunction } from 'express'
+import { z } from 'zod'
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
+import jwt from 'jsonwebtoken'
+import { pool } from '../db'
+import { requireAuth, getJwtSecret, AuthUserPayload } from '../middleware/auth'
+import { isCashfreeConfigured, createCashfreeOrder, verifyWebhookSignature } from '../services/cashfree'
+import { syncOrderWithCashfree } from '../services/payments'
+
+export const paymentsRouter = Router()
+
+// Rate limit: 10 order creation requests per 10 minutes per user / IP
+const orderCreateLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?.id || ipKeyGenerator(req.ip || '') || 'anonymous',
+  message: {
+    error: 'Too many order attempts. Please try again after 10 minutes.',
+  },
+})
+
+// Optional auth middleware for guest/logged-in order endpoints
+function optionalAuth(req: Request, _res: Response, next: NextFunction) {
+  try {
+    const token = req.cookies?.auth_token || req.cookies?.admin_token
+    if (token) {
+      const decoded = jwt.verify(token, getJwtSecret()) as AuthUserPayload
+      req.user = decoded
+    }
+  } catch {
+    // Ignore invalid/expired tokens for public endpoints
+  }
+  next()
+}
+
+function getClientReturnUrl(): string {
+  const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/+$/, '')
+  return `${clientUrl}/payment/status?order_id={order_id}`
+}
+
+function getWebhookNotifyUrl(): string | undefined {
+  const serverUrl = (process.env.SERVER_PUBLIC_URL || '').trim().replace(/\/+$/, '')
+  return serverUrl ? `${serverUrl}/api/payments/webhook` : undefined
+}
+
+function generateCashfreeOrderId(): string {
+  const timestamp = Date.now()
+  const randomPart = Math.random().toString(36).substring(2, 7).toUpperCase()
+  return `YO_${timestamp}_${randomPart}`
+}
+
+// -----------------------------------------------------------------------------
+// POST /api/payments/course-order (requireAuth)
+// -----------------------------------------------------------------------------
+const CourseOrderSchema = z.object({
+  courseId: z.string().uuid('Invalid course ID'),
+  phone: z.string().trim().optional(),
+})
+
+paymentsRouter.post(
+  '/course-order',
+  requireAuth,
+  orderCreateLimiter,
+  async (req: Request, res: Response) => {
+    if (!isCashfreeConfigured()) {
+      res.status(503).json({ error: 'Payments not configured' })
+      return
+    }
+
+    const parseResult = CourseOrderSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({
+        error: 'Validation error',
+        details: parseResult.error.flatten().fieldErrors,
+      })
+      return
+    }
+
+    const { courseId, phone: providedPhone } = parseResult.data
+    const userId = req.user!.id
+
+    try {
+      // 1. Fetch course details & ensure it is visible
+      const courseRes = await pool.query<{
+        id: string
+        title: string
+        price: number
+        is_visible: boolean
+      }>('SELECT id, title, price, is_visible FROM courses WHERE id = $1 LIMIT 1;', [courseId])
+
+      if (courseRes.rows.length === 0 || !courseRes.rows[0].is_visible) {
+        res.status(404).json({ error: 'Course not found or currently unavailable' })
+        return
+      }
+
+      const course = courseRes.rows[0]
+      if (course.price <= 0) {
+        res.status(400).json({ error: 'This course is free. Please use Enroll Free.' })
+        return
+      }
+
+      // 2. Check if user already has an active enrollment
+      const enrollmentRes = await pool.query<{
+        id: string
+        status: string
+        expires_at: string | null
+      }>(
+        `SELECT id, status, expires_at FROM enrollments WHERE user_id = $1 AND course_id = $2 AND status = 'active' LIMIT 1;`,
+        [userId, courseId]
+      )
+
+      let isRenewal = false
+      if (enrollmentRes.rows.length > 0) {
+        const existing = enrollmentRes.rows[0]
+        const isExpired = existing.expires_at ? new Date(existing.expires_at) <= new Date() : false
+        if (!isExpired) {
+          res.status(409).json({ error: 'You already have active access to this course.' })
+          return
+        }
+        isRenewal = true
+      }
+
+      // 3. Retrieve user profile
+      const userRes = await pool.query<{
+        name: string | null
+        email: string
+        phone: string | null
+      }>('SELECT name, email, phone FROM users WHERE id = $1 LIMIT 1;', [userId])
+
+      if (userRes.rows.length === 0) {
+        res.status(404).json({ error: 'User profile not found' })
+        return
+      }
+
+      const userProfile = userRes.rows[0]
+      const rawPhone = providedPhone || userProfile.phone || ''
+      const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10)
+
+      if (cleanPhone.length !== 10) {
+        res.status(400).json({ error: 'Please add a 10-digit phone number in your account.' })
+        return
+      }
+
+      // If phone was provided and user didn't have one saved, save it
+      if (providedPhone && !userProfile.phone) {
+        await pool.query('UPDATE users SET phone = $1 WHERE id = $2;', [cleanPhone, userId])
+      }
+
+      const cashfreeOrderId = generateCashfreeOrderId()
+      const customerName = userProfile.name?.trim() || 'Student'
+      const customerEmail = userProfile.email.trim()
+
+      const courseTitleRef = isRenewal
+        ? `${course.title} (1-Year Renewal)`
+        : `${course.title} (1-Year Access)`
+
+      // 4. Create local pending order
+      const orderInsertRes = await pool.query<{ id: string }>(
+        `INSERT INTO orders (
+          type, reference_id, reference_title, amount, status,
+          cashfree_order_id, customer_name, customer_email, customer_phone, user_id
+        ) VALUES (
+          'course', $1, $2, $3, 'pending',
+          $4, $5, $6, $7, $8
+        ) RETURNING id;`,
+        [
+          course.id,
+          courseTitleRef,
+          course.price,
+          cashfreeOrderId,
+          customerName,
+          customerEmail,
+          cleanPhone,
+          userId,
+        ]
+      )
+
+      const localOrderId = orderInsertRes.rows[0].id
+
+      // 5. Initiate Cashfree Order
+      const cfResult = await createCashfreeOrder({
+        orderId: cashfreeOrderId,
+        orderAmount: course.price,
+        customerId: userId,
+        customerName,
+        customerEmail,
+        customerPhone: cleanPhone,
+        returnUrl: getClientReturnUrl(),
+        notifyUrl: getWebhookNotifyUrl(),
+      })
+
+      // Update order with payment session id
+      await pool.query(
+        `UPDATE orders SET payment_session_id = $1 WHERE id = $2;`,
+        [cfResult.paymentSessionId, localOrderId]
+      )
+
+      res.status(200).json({
+        orderId: cashfreeOrderId,
+        paymentSessionId: cfResult.paymentSessionId,
+      })
+    } catch (err: any) {
+      console.error('[Payments:CourseOrder] Error:', err?.message || err)
+      res.status(500).json({ error: err?.message || 'Failed to initiate course payment' })
+    }
+  }
+)
+
+// -----------------------------------------------------------------------------
+// POST /api/payments/ebook-order (requireAuth)
+// -----------------------------------------------------------------------------
+const EbookOrderSchema = z.object({
+  ebookId: z.string().uuid('Invalid ebook ID'),
+  phone: z.string().trim().optional(),
+})
+
+paymentsRouter.post(
+  '/ebook-order',
+  requireAuth,
+  orderCreateLimiter,
+  async (req: Request, res: Response) => {
+    if (!isCashfreeConfigured()) {
+      res.status(503).json({ error: 'Payments not configured' })
+      return
+    }
+
+    const parseResult = EbookOrderSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({
+        error: 'Validation error',
+        details: parseResult.error.flatten().fieldErrors,
+      })
+      return
+    }
+
+    const { ebookId, phone: providedPhone } = parseResult.data
+    const userId = req.user!.id
+
+    try {
+      // 1. Fetch ebook
+      const ebookRes = await pool.query<{
+        id: string
+        title: string
+        price: number
+        is_visible: boolean
+      }>('SELECT id, title, price, is_visible FROM ebooks WHERE id = $1 LIMIT 1;', [ebookId])
+
+      if (ebookRes.rows.length === 0 || !ebookRes.rows[0].is_visible) {
+        res.status(404).json({ error: 'Ebook not found or currently unavailable' })
+        return
+      }
+
+      const ebook = ebookRes.rows[0]
+      if (ebook.price <= 0) {
+        res.status(400).json({ error: 'This ebook is free. Please download it directly.' })
+        return
+      }
+
+      // 2. Check if already purchased
+      const purchaseRes = await pool.query(
+        `SELECT id FROM ebook_purchases WHERE user_id = $1 AND ebook_id = $2 LIMIT 1;`,
+        [userId, ebookId]
+      )
+
+      if (purchaseRes.rows.length > 0) {
+        res.status(409).json({ error: 'You have already purchased this ebook.' })
+        return
+      }
+
+      // 3. User info
+      const userRes = await pool.query<{
+        name: string | null
+        email: string
+        phone: string | null
+      }>('SELECT name, email, phone FROM users WHERE id = $1 LIMIT 1;', [userId])
+
+      if (userRes.rows.length === 0) {
+        res.status(404).json({ error: 'User profile not found' })
+        return
+      }
+
+      const userProfile = userRes.rows[0]
+      const rawPhone = providedPhone || userProfile.phone || ''
+      const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10)
+
+      if (cleanPhone.length !== 10) {
+        res.status(400).json({ error: 'Please add a 10-digit phone number in your account.' })
+        return
+      }
+
+      if (providedPhone && !userProfile.phone) {
+        await pool.query('UPDATE users SET phone = $1 WHERE id = $2;', [cleanPhone, userId])
+      }
+
+      const cashfreeOrderId = generateCashfreeOrderId()
+      const customerName = userProfile.name?.trim() || 'Reader'
+      const customerEmail = userProfile.email.trim()
+
+      // 4. Create local pending order
+      const orderInsertRes = await pool.query<{ id: string }>(
+        `INSERT INTO orders (
+          type, reference_id, reference_title, amount, status,
+          cashfree_order_id, customer_name, customer_email, customer_phone, user_id
+        ) VALUES (
+          'ebook', $1, $2, $3, 'pending',
+          $4, $5, $6, $7, $8
+        ) RETURNING id;`,
+        [
+          ebook.id,
+          ebook.title,
+          ebook.price,
+          cashfreeOrderId,
+          customerName,
+          customerEmail,
+          cleanPhone,
+          userId,
+        ]
+      )
+
+      const localOrderId = orderInsertRes.rows[0].id
+
+      // 5. Initiate Cashfree Order
+      const cfResult = await createCashfreeOrder({
+        orderId: cashfreeOrderId,
+        orderAmount: ebook.price,
+        customerId: userId,
+        customerName,
+        customerEmail,
+        customerPhone: cleanPhone,
+        returnUrl: getClientReturnUrl(),
+        notifyUrl: getWebhookNotifyUrl(),
+      })
+
+      await pool.query(
+        `UPDATE orders SET payment_session_id = $1 WHERE id = $2;`,
+        [cfResult.paymentSessionId, localOrderId]
+      )
+
+      res.status(200).json({
+        orderId: cashfreeOrderId,
+        paymentSessionId: cfResult.paymentSessionId,
+      })
+    } catch (err: any) {
+      console.error('[Payments:EbookOrder] Error:', err?.message || err)
+      res.status(500).json({ error: err?.message || 'Failed to initiate ebook payment' })
+    }
+  }
+)
+
+// -----------------------------------------------------------------------------
+// POST /api/payments/consultation-order (auth optional)
+// -----------------------------------------------------------------------------
+const ConsultationOrderSchema = z.object({
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
+  email: z.string().trim().email('Valid email is required'),
+  phone: z.string().trim().min(10, 'Valid phone number is required'),
+  service_title: z.string().trim().max(150).optional().nullable(),
+  preferred_date: z.string().refine((val) => {
+    const date = new Date(val)
+    if (isNaN(date.getTime())) return false
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const maxDate = new Date()
+    maxDate.setDate(maxDate.getDate() + 60)
+    return date > today && date <= maxDate
+  }, 'Preferred date must be within the next 60 days'),
+  preferred_slot: z.enum(['Morning', 'Afternoon', 'Evening']),
+  birth_date: z.string().optional().nullable(),
+  birth_time: z.string().optional().nullable(),
+  birth_time_unknown: z.boolean().optional().default(false),
+  birth_place: z.string().trim().max(150).optional().nullable(),
+  topic: z.string().trim().max(150).optional().nullable(),
+  message: z.string().trim().max(1000, 'Message must not exceed 1000 characters').optional().default(''),
+  consent: z.boolean().refine((val) => val === true, {
+    message: 'You must agree to the consultation booking policy',
+  }),
+})
+
+paymentsRouter.post(
+  '/consultation-order',
+  optionalAuth,
+  orderCreateLimiter,
+  async (req: Request, res: Response) => {
+    if (!isCashfreeConfigured()) {
+      res.status(503).json({ error: 'Payments not configured' })
+      return
+    }
+
+    const parseResult = ConsultationOrderSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({
+        error: 'Validation error',
+        details: parseResult.error.flatten().fieldErrors,
+      })
+      return
+    }
+
+    const data = parseResult.data
+    const userId = req.user?.id || null
+
+    const cleanPhone = data.phone.replace(/\D/g, '').slice(-10)
+    if (cleanPhone.length !== 10) {
+      res.status(400).json({ error: 'Please provide a valid 10-digit phone number.' })
+      return
+    }
+
+    try {
+      // 1. Fetch consultation fee from consultation_settings
+      const settingsRes = await pool.query<{ fee: number }>(
+        'SELECT fee FROM consultation_settings LIMIT 1;'
+      )
+      const fee = settingsRes.rows[0]?.fee || 0
+
+      if (fee <= 0) {
+        res.status(400).json({ error: 'Consultation fee is not configured' })
+        return
+      }
+
+      const cashfreeOrderId = generateCashfreeOrderId()
+      const serviceTitle = data.service_title || '1-on-1 Consultation'
+
+      // 2. Create local pending order and consultation booking in transaction
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+
+        const orderRes = await client.query<{ id: string }>(
+          `INSERT INTO orders (
+            type, reference_title, amount, status,
+            cashfree_order_id, customer_name, customer_email, customer_phone, user_id
+          ) VALUES (
+            'consultation', $1, $2, 'pending',
+            $3, $4, $5, $6, $7
+          ) RETURNING id;`,
+          [
+            serviceTitle,
+            fee,
+            cashfreeOrderId,
+            data.name,
+            data.email,
+            cleanPhone,
+            userId,
+          ]
+        )
+
+        const orderId = orderRes.rows[0].id
+
+        await client.query(
+          `INSERT INTO consultation_bookings (
+            order_id, user_id, name, email, phone, service_title,
+            preferred_date, preferred_slot, birth_date, birth_time,
+            birth_time_unknown, birth_place, topic, message, status
+          ) VALUES (
+            $1, $2, $3, $4, $5, $6,
+            $7, $8, $9, $10,
+            $11, $12, $13, $14, 'new'
+          );`,
+          [
+            orderId,
+            userId,
+            data.name,
+            data.email,
+            cleanPhone,
+            serviceTitle,
+            data.preferred_date,
+            data.preferred_slot,
+            data.birth_date || null,
+            data.birth_time || null,
+            data.birth_time_unknown || false,
+            data.birth_place || null,
+            data.topic || null,
+            data.message || '',
+          ]
+        )
+
+        // 3. Initiate Cashfree Order
+        const cfResult = await createCashfreeOrder({
+          orderId: cashfreeOrderId,
+          orderAmount: fee,
+          customerId: userId || `guest_${cleanPhone}`,
+          customerName: data.name,
+          customerEmail: data.email,
+          customerPhone: cleanPhone,
+          returnUrl: getClientReturnUrl(),
+          notifyUrl: getWebhookNotifyUrl(),
+        })
+
+        await client.query(
+          `UPDATE orders SET payment_session_id = $1 WHERE id = $2;`,
+          [cfResult.paymentSessionId, orderId]
+        )
+
+        await client.query('COMMIT')
+
+        res.status(200).json({
+          orderId: cashfreeOrderId,
+          paymentSessionId: cfResult.paymentSessionId,
+        })
+      } catch (err) {
+        await client.query('ROLLBACK')
+        throw err
+      } finally {
+        client.release()
+      }
+    } catch (err: any) {
+      console.error('[Payments:ConsultationOrder] Error:', err?.message || err)
+      res.status(500).json({ error: err?.message || 'Failed to initiate consultation payment' })
+    }
+  }
+)
+
+// -----------------------------------------------------------------------------
+// POST /api/payments/report-order (auth optional)
+// -----------------------------------------------------------------------------
+const ReportOrderSchema = z.object({
+  reportId: z.string().uuid('Invalid report ID'),
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
+  email: z.string().trim().email('Valid email is required'),
+  whatsapp_number: z.string().trim().min(10, 'Valid WhatsApp number is required'),
+  gender: z.string().trim().optional().nullable(),
+  birth_date: z.string().optional().nullable(),
+  birth_time: z.string().optional().nullable(),
+  birth_time_unknown: z.boolean().optional().default(false),
+  birth_place: z.string().trim().max(150).optional().nullable(),
+  details: z.string().trim().min(5, 'Please provide details (minimum 5 characters)').max(1000),
+  notes: z.string().trim().max(1000).optional().nullable(),
+  consent: z.boolean().refine((val) => val === true, {
+    message: 'You must provide consent to proceed',
+  }),
+})
+
+paymentsRouter.post(
+  '/report-order',
+  optionalAuth,
+  orderCreateLimiter,
+  async (req: Request, res: Response) => {
+    if (!isCashfreeConfigured()) {
+      res.status(503).json({ error: 'Payments not configured' })
+      return
+    }
+
+    const parseResult = ReportOrderSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({
+        error: 'Validation error',
+        details: parseResult.error.flatten().fieldErrors,
+      })
+      return
+    }
+
+    const data = parseResult.data
+    const userId = req.user?.id || null
+
+    const cleanPhone = data.whatsapp_number.replace(/\D/g, '').slice(-10)
+    if (cleanPhone.length !== 10) {
+      res.status(400).json({ error: 'Please provide a valid 10-digit WhatsApp number.' })
+      return
+    }
+
+    try {
+      // 1. Fetch report details
+      const reportRes = await pool.query<{
+        id: string
+        title: string
+        price: number
+        is_visible: boolean
+      }>('SELECT id, title, price, is_visible FROM reports WHERE id = $1 LIMIT 1;', [data.reportId])
+
+      if (reportRes.rows.length === 0 || !reportRes.rows[0].is_visible) {
+        res.status(404).json({ error: 'Report not found or currently unavailable' })
+        return
+      }
+
+      const report = reportRes.rows[0]
+      if (report.price <= 0) {
+        res.status(400).json({ error: 'Report price must be greater than zero' })
+        return
+      }
+
+      const cashfreeOrderId = generateCashfreeOrderId()
+
+      // 2. Create local pending order and report order record in transaction
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+
+        const orderRes = await client.query<{ id: string }>(
+          `INSERT INTO orders (
+            type, reference_id, reference_title, amount, status,
+            cashfree_order_id, customer_name, customer_email, customer_phone, user_id
+          ) VALUES (
+            'report', $1, $2, $3, 'pending',
+            $4, $5, $6, $7, $8
+          ) RETURNING id;`,
+          [
+            report.id,
+            report.title,
+            report.price,
+            cashfreeOrderId,
+            data.name,
+            data.email,
+            cleanPhone,
+            userId,
+          ]
+        )
+
+        const orderId = orderRes.rows[0].id
+
+        await client.query(
+          `INSERT INTO report_orders (
+            report_id, report_title, order_id, user_id, source, name, email,
+            whatsapp_number, gender, birth_date, birth_time, birth_time_unknown,
+            birth_place, details, notes, amount, status, consent, consent_at
+          ) VALUES (
+            $1, $2, $3, $4, 'online', $5, $6,
+            $7, $8, $9, $10, $11,
+            $12, $13, $14, $15, 'new', true, timezone('utc'::text, now())
+          );`,
+          [
+            report.id,
+            report.title,
+            orderId,
+            userId,
+            data.name,
+            data.email,
+            cleanPhone,
+            data.gender || null,
+            data.birth_date || null,
+            data.birth_time || null,
+            data.birth_time_unknown || false,
+            data.birth_place || null,
+            data.details,
+            data.notes || null,
+            report.price,
+          ]
+        )
+
+        // 3. Initiate Cashfree Order
+        const cfResult = await createCashfreeOrder({
+          orderId: cashfreeOrderId,
+          orderAmount: report.price,
+          customerId: userId || `guest_${cleanPhone}`,
+          customerName: data.name,
+          customerEmail: data.email,
+          customerPhone: cleanPhone,
+          returnUrl: getClientReturnUrl(),
+          notifyUrl: getWebhookNotifyUrl(),
+        })
+
+        await client.query(
+          `UPDATE orders SET payment_session_id = $1 WHERE id = $2;`,
+          [cfResult.paymentSessionId, orderId]
+        )
+
+        await client.query('COMMIT')
+
+        res.status(200).json({
+          orderId: cashfreeOrderId,
+          paymentSessionId: cfResult.paymentSessionId,
+        })
+      } catch (err) {
+        await client.query('ROLLBACK')
+        throw err
+      } finally {
+        client.release()
+      }
+    } catch (err: any) {
+      console.error('[Payments:ReportOrder] Error:', err?.message || err)
+      res.status(500).json({ error: err?.message || 'Failed to initiate report payment' })
+    }
+  }
+)
+
+// -----------------------------------------------------------------------------
+// GET /api/payments/status/:orderId (auth optional)
+// -----------------------------------------------------------------------------
+paymentsRouter.get('/status/:orderId', optionalAuth, async (req: Request, res: Response) => {
+  const { orderId } = req.params
+
+  if (!orderId || typeof orderId !== 'string') {
+    res.status(400).json({ error: 'Order ID is required' })
+    return
+  }
+
+  try {
+    const syncResult = await syncOrderWithCashfree(orderId)
+    const order = syncResult.order
+
+    if (!order) {
+      res.status(404).json({ error: 'Order not found' })
+      return
+    }
+
+    // Access control: If order belongs to a registered user, ensure only that user or an admin can view it
+    if (order.user_id) {
+      const currentUserId = req.user?.id
+      const currentUserRole = req.user?.role
+      if (currentUserId && currentUserId !== order.user_id && currentUserRole !== 'admin') {
+        res.status(403).json({ error: 'You do not have permission to view this order.' })
+        return
+      }
+    }
+
+    // Return sanitized status info without customer PII
+    res.status(200).json({
+      orderId: order.cashfree_order_id || order.id,
+      status: order.status,
+      type: order.type,
+      referenceTitle: order.reference_title,
+      amount: order.amount,
+      paidAt: order.paid_at,
+      failureReason: order.failure_reason,
+    })
+  } catch (err: any) {
+    console.error('[Payments:Status] Error:', err?.message || err)
+    res.status(500).json({ error: 'Failed to retrieve order status' })
+  }
+})
+
+// -----------------------------------------------------------------------------
+// Webhook handler logic exported for mounting with express.raw() in index.ts
+// -----------------------------------------------------------------------------
+export async function handlePaymentsWebhook(req: Request, res: Response): Promise<void> {
+  const signature = req.headers['x-webhook-signature'] as string | undefined
+  const timestamp = req.headers['x-webhook-timestamp'] as string | undefined
+
+  if (!signature || !timestamp) {
+    console.warn('[Payments:Webhook] Missing signature or timestamp headers')
+    res.status(400).json({ error: 'Missing required webhook signature headers' })
+    return
+  }
+
+  // Obtain raw body string
+  const rawBody = Buffer.isBuffer(req.body)
+    ? req.body.toString('utf8')
+    : typeof req.body === 'string'
+    ? req.body
+    : JSON.stringify(req.body)
+
+  try {
+    // 1. Strictly verify cryptographic HMAC signature
+    verifyWebhookSignature(signature, rawBody, timestamp)
+
+    // 2. Parse payload safely
+    const payload = JSON.parse(rawBody)
+    const eventType = payload.type || payload.event || 'UNKNOWN_EVENT'
+
+    // Cashfree PG sends order details in data.order or data
+    const orderData = payload.data?.order || payload.data || {}
+    const orderId = orderData.order_id || orderData.orderId
+
+    // Log ONLY sanitized metadata - never secrets or full payload
+    console.log(`[Cashfree:Webhook] Verified event: ${eventType} for order: ${orderId || 'unknown'}`)
+
+    if (orderId) {
+      // 3. Confirm directly with Cashfree gateway before updating DB
+      await syncOrderWithCashfree(String(orderId))
+    }
+
+    res.status(200).json({ status: 'ok' })
+  } catch (err: any) {
+    console.error('[Cashfree:Webhook] Signature verification failed or error processing:', err?.message || err)
+    res.status(401).json({ error: 'Invalid webhook signature' })
+  }
+}

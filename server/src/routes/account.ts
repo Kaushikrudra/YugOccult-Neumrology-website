@@ -46,6 +46,8 @@ accountRouter.get('/courses', async (req: Request, res: Response) => {
         e.status,
         e.source,
         e.granted_at,
+        e.expires_at,
+        (e.expires_at IS NOT NULL AND e.expires_at <= timezone('utc'::text, now())) AS is_expired,
         (SELECT COUNT(*)::int FROM course_materials cm WHERE cm.course_id = c.id AND cm.is_visible = true) AS materials_count
        FROM enrollments e
        JOIN courses c ON e.course_id = c.id
@@ -77,9 +79,16 @@ accountRouter.get('/courses/:courseId/materials', async (req: Request, res: Resp
   }
 
   try {
-    // 1. Verify that user has an active enrollment in this specific course
-    const enrollmentRes = await pool.query(
-      `SELECT id, status FROM enrollments 
+    // 1. Verify that user has an active, unexpired enrollment in this specific course
+    const enrollmentRes = await pool.query<{
+      id: string
+      status: string
+      expires_at: string | null
+      is_expired: boolean
+    }>(
+      `SELECT id, status, expires_at,
+              (expires_at IS NOT NULL AND expires_at <= timezone('utc'::text, now())) AS is_expired
+       FROM enrollments 
        WHERE user_id = $1 AND course_id = $2 AND status = 'active' 
        LIMIT 1;`,
       [userId, courseId]
@@ -88,6 +97,14 @@ accountRouter.get('/courses/:courseId/materials', async (req: Request, res: Resp
     if (enrollmentRes.rows.length === 0) {
       res.status(403).json({
         error: 'Forbidden: You do not have active enrollment in this course.',
+      })
+      return
+    }
+
+    if (enrollmentRes.rows[0].is_expired) {
+      res.status(403).json({
+        error: 'Your 1-year course access has expired. Please renew your enrollment to access materials.',
+        isExpired: true,
       })
       return
     }
@@ -158,9 +175,14 @@ accountRouter.post(
 
       const material = materialRes.rows[0]
 
-      // 2. Verify active enrollment for this course
-      const enrollmentRes = await pool.query(
-        `SELECT id FROM enrollments 
+      // 2. Verify active unexpired enrollment for this course
+      const enrollmentRes = await pool.query<{
+        id: string
+        is_expired: boolean
+      }>(
+        `SELECT id,
+                (expires_at IS NOT NULL AND expires_at <= timezone('utc'::text, now())) AS is_expired
+         FROM enrollments 
          WHERE user_id = $1 AND course_id = $2 AND status = 'active'
          LIMIT 1;`,
         [userId, material.course_id]
@@ -169,6 +191,14 @@ accountRouter.post(
       if (enrollmentRes.rows.length === 0) {
         res.status(403).json({
           error: 'Forbidden: Active course enrollment is required to access this material.',
+        })
+        return
+      }
+
+      if (enrollmentRes.rows[0].is_expired) {
+        res.status(403).json({
+          error: 'Your 1-year course access has expired. Please renew your enrollment.',
+          isExpired: true,
         })
         return
       }
@@ -270,16 +300,21 @@ accountRouter.get(
 
       const mat = materialRes.rows[0]
 
-      // Check active enrollment
-      const enrollmentRes = await pool.query(
-        `SELECT id FROM enrollments 
+      // Check active unexpired enrollment
+      const enrollmentRes = await pool.query<{
+        id: string
+        is_expired: boolean
+      }>(
+        `SELECT id,
+                (expires_at IS NOT NULL AND expires_at <= timezone('utc'::text, now())) AS is_expired
+         FROM enrollments 
          WHERE user_id = $1 AND course_id = $2 AND status = 'active'
          LIMIT 1;`,
         [userId, mat.course_id]
       )
 
-      if (enrollmentRes.rows.length === 0) {
-        res.status(403).json({ error: 'Forbidden: Active enrollment required' })
+      if (enrollmentRes.rows.length === 0 || enrollmentRes.rows[0].is_expired) {
+        res.status(403).json({ error: 'Forbidden: Active valid enrollment required' })
         return
       }
 
@@ -298,6 +333,166 @@ accountRouter.get(
     } catch (err: any) {
       console.error('[Account:Materials:Stream] Error:', err)
       res.status(500).json({ error: 'Failed to stream course material' })
+    }
+  }
+)
+
+// -----------------------------------------------------------------------------
+// GET /api/account/orders
+// Returns all orders associated with the authenticated user
+// -----------------------------------------------------------------------------
+accountRouter.get('/orders', async (req: Request, res: Response) => {
+  const userId = req.user?.id
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT 
+        id, type, reference_title, amount::float AS amount,
+        LOWER(status) AS status, payment_method, paid_at,
+        created_at, cashfree_order_id, failure_reason
+       FROM orders
+       WHERE user_id = $1
+       ORDER BY created_at DESC;`,
+      [userId]
+    )
+
+    res.status(200).json({ orders: rows })
+  } catch (err: any) {
+    console.error('[Account:Orders] Error:', err)
+    res.status(500).json({ error: 'Failed to retrieve your orders' })
+  }
+})
+
+// -----------------------------------------------------------------------------
+// GET /api/account/ebooks
+// Returns all purchased ebooks for the authenticated user
+// -----------------------------------------------------------------------------
+accountRouter.get('/ebooks', async (req: Request, res: Response) => {
+  const userId = req.user?.id
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT 
+        e.id, e.title, e.description, e.cover_image_url, e.file_name,
+        e.size_bytes, e.price, ep.created_at AS purchased_at
+       FROM ebook_purchases ep
+       JOIN ebooks e ON e.id = ep.ebook_id
+       WHERE ep.user_id = $1
+       ORDER BY ep.created_at DESC;`,
+      [userId]
+    )
+
+    res.status(200).json({ ebooks: rows })
+  } catch (err: any) {
+    console.error('[Account:Ebooks] Error:', err)
+    res.status(500).json({ error: 'Failed to retrieve your ebooks' })
+  }
+})
+
+// -----------------------------------------------------------------------------
+// GET /api/account/report-orders
+// Returns all report orders placed by the authenticated user
+// -----------------------------------------------------------------------------
+accountRouter.get('/report-orders', async (req: Request, res: Response) => {
+  const userId = req.user?.id
+  if (!userId) {
+    res.status(401).json({ error: 'Unauthorized' })
+    return
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT 
+        ro.id, ro.report_id, ro.report_title, ro.amount, ro.status,
+        ro.details, ro.delivered_at, ro.delivered_file_name,
+        (ro.delivered_pdf_path IS NOT NULL) AS has_file,
+        ro.created_at,
+        COALESCE(LOWER(o.status), 'pending') AS payment_status
+       FROM report_orders ro
+       LEFT JOIN orders o ON o.id = ro.order_id
+       WHERE ro.user_id = $1
+       ORDER BY ro.created_at DESC;`,
+      [userId]
+    )
+
+    res.status(200).json({ reports: rows })
+  } catch (err: any) {
+    console.error('[Account:ReportOrders] Error:', err)
+    res.status(500).json({ error: 'Failed to retrieve your report orders' })
+  }
+})
+
+// -----------------------------------------------------------------------------
+// POST /api/account/report-orders/:id/download
+// Generates 60-second temporary signed URL for customer's delivered report PDF
+// -----------------------------------------------------------------------------
+accountRouter.post(
+  '/report-orders/:id/download',
+  materialAccessLimiter,
+  async (req: Request, res: Response) => {
+    const userId = req.user?.id
+    const { id } = req.params
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    try {
+      const { rows } = await pool.query<{
+        id: string
+        user_id: string
+        status: string
+        delivered_pdf_path: string | null
+        delivered_file_name: string | null
+      }>(
+        `SELECT id, user_id, status, delivered_pdf_path, delivered_file_name
+         FROM report_orders
+         WHERE id = $1;`,
+        [id]
+      )
+
+      if (rows.length === 0) {
+        res.status(404).json({ error: 'Report order not found' })
+        return
+      }
+
+      const reportOrder = rows[0]
+
+      if (reportOrder.user_id !== userId) {
+        res.status(403).json({ error: 'Forbidden: Access denied' })
+        return
+      }
+
+      if (reportOrder.status !== 'delivered' || !reportOrder.delivered_pdf_path) {
+        res.status(400).json({ error: 'Report PDF is not available yet' })
+        return
+      }
+
+      if (!isStorageConfigured()) {
+        res.status(501).json({ error: 'Secure storage service is temporarily unavailable' })
+        return
+      }
+
+      const fileName = reportOrder.delivered_file_name || 'Personalised-Report.pdf'
+      const signedUrl = await createSignedDownloadUrl(
+        reportOrder.delivered_pdf_path,
+        60,
+        { download: fileName }
+      )
+
+      res.status(200).json({ url: signedUrl, fileName })
+    } catch (err: any) {
+      console.error('[Account:ReportDownload] Error:', err)
+      res.status(500).json({ error: 'Failed to generate report download link' })
     }
   }
 )

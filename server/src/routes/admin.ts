@@ -20,6 +20,7 @@ import {
   reactivateEnrollment,
 } from '../services/enrollment'
 import { sendAdminPurchaseNotification } from '../services/email'
+import { syncOrderWithCashfree } from '../services/payments'
 
 export const adminRouter = Router()
 
@@ -968,6 +969,8 @@ adminRouter.get('/enrollments', async (req: Request, res: Response) => {
         e.status,
         e.source,
         e.granted_at,
+        e.expires_at,
+        (e.expires_at IS NOT NULL AND e.expires_at <= timezone('utc'::text, now())) AS is_expired,
         u.name AS buyer_name,
         u.email AS buyer_email,
         u.phone AS buyer_phone,
@@ -1223,7 +1226,8 @@ adminRouter.get('/access-logs', async (req: Request, res: Response) => {
 // Returns orders with customer & linked user buyer info
 // -----------------------------------------------------------------------------
 const OrdersQuerySchema = PaginationSchema.extend({
-  status: z.enum(['PAID', 'PENDING', 'FAILED', 'REFUNDED']).optional(),
+  status: z.string().optional(),
+  type: z.enum(['all', 'course', 'consultation', 'ebook', 'report']).optional(),
 })
 
 adminRouter.get('/orders', async (req: Request, res: Response) => {
@@ -1233,16 +1237,21 @@ adminRouter.get('/orders', async (req: Request, res: Response) => {
     return
   }
 
-  const { page, limit, status } = queryResult.data
+  const { page, limit, status, type } = queryResult.data
   const offset = (page - 1) * limit
 
   try {
     const conditions: string[] = []
     const params: unknown[] = []
 
-    if (status) {
-      params.push(status.toUpperCase())
-      conditions.push(`UPPER(o.status) = $${params.length}`)
+    if (status && status !== 'all') {
+      params.push(status.toLowerCase())
+      conditions.push(`LOWER(o.status) = $${params.length}`)
+    }
+
+    if (type && type !== 'all') {
+      params.push(type.toLowerCase())
+      conditions.push(`LOWER(o.type) = $${params.length}`)
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
@@ -1257,13 +1266,20 @@ adminRouter.get('/orders', async (req: Request, res: Response) => {
         o.id, 
         o.type, 
         o.reference_id, 
-        o.amount, 
-        o.status, 
+        o.reference_title,
+        o.amount::float AS amount, 
+        LOWER(o.status) AS status, 
         o.cashfree_order_id, 
+        o.payment_session_id,
+        o.cashfree_payment_id,
+        o.payment_method,
+        o.paid_at,
+        o.failure_reason,
         o.customer_name, 
         o.customer_email, 
         o.customer_phone, 
         o.created_at,
+        o.updated_at,
         o.user_id,
         u.name AS user_name,
         u.email AS user_email
@@ -1287,6 +1303,26 @@ adminRouter.get('/orders', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('[Admin:Orders] Error fetching orders:', err)
     res.status(500).json({ error: 'Failed to retrieve orders' })
+  }
+})
+
+// POST /api/admin/orders/:id/sync - Sync order status manually with Cashfree
+adminRouter.post('/orders/:id/sync', async (req: Request, res: Response) => {
+  const { id } = req.params
+  try {
+    const result = await syncOrderWithCashfree(id)
+    if (!result.order) {
+      res.status(404).json({ error: result.error || 'Order not found' })
+      return
+    }
+    res.status(200).json({
+      success: true,
+      order: result.order,
+      alreadyPaid: result.alreadyPaid,
+    })
+  } catch (err: any) {
+    console.error('[Admin:Orders:Sync] Error:', err)
+    res.status(500).json({ error: err?.message || 'Failed to sync order with Cashfree' })
   }
 })
 
@@ -1712,6 +1748,142 @@ adminRouter.put('/consultation', async (req: Request, res: Response) => {
   } catch (err) {
     console.error('[Admin:Consultation:Update] Error:', err)
     res.status(500).json({ error: 'Failed to update consultation settings' })
+  }
+})
+
+// -----------------------------------------------------------------------------
+// CONSULTATION BOOKINGS CMS ENDPOINTS
+// -----------------------------------------------------------------------------
+const BookingsQuerySchema = PaginationSchema.extend({
+  status: z.enum(['all', 'new', 'confirmed', 'completed', 'cancelled']).optional().default('all'),
+  search: z.string().trim().optional(),
+})
+
+adminRouter.get('/bookings', async (req: Request, res: Response) => {
+  const parseResult = BookingsQuerySchema.safeParse(req.query)
+  if (!parseResult.success) {
+    res.status(400).json({ error: 'Validation error', details: parseResult.error.flatten().fieldErrors })
+    return
+  }
+
+  const { page, limit, status, search } = parseResult.data
+  const offset = (page - 1) * limit
+
+  try {
+    const conditions: string[] = ['1=1']
+    const params: any[] = []
+
+    if (status && status !== 'all') {
+      params.push(status)
+      conditions.push(`cb.status = $${params.length}`)
+    }
+
+    if (search && search.trim() !== '') {
+      params.push(`%${search.trim()}%`)
+      conditions.push(
+        `(cb.name ILIKE $${params.length} OR cb.email ILIKE $${params.length} OR cb.phone ILIKE $${params.length} OR cb.service_title ILIKE $${params.length})`
+      )
+    }
+
+    const whereClause = conditions.join(' AND ')
+
+    const countRes = await pool.query<{ total: string }>(
+      `SELECT COUNT(*)::text AS total FROM consultation_bookings cb WHERE ${whereClause};`,
+      params
+    )
+    const total = parseInt(countRes.rows[0]?.total || '0', 10)
+
+    const queryParams = [...params, limit, offset]
+    const limitIdx = queryParams.length - 1
+    const offsetIdx = queryParams.length
+
+    const { rows } = await pool.query(
+      `SELECT 
+        cb.id,
+        cb.order_id,
+        cb.user_id,
+        cb.name,
+        cb.email,
+        cb.phone,
+        cb.service_title,
+        cb.preferred_date,
+        cb.preferred_slot,
+        cb.birth_date,
+        cb.birth_time,
+        cb.birth_time_unknown,
+        cb.birth_place,
+        cb.topic,
+        cb.message,
+        cb.status,
+        cb.admin_notes,
+        cb.created_at,
+        cb.updated_at,
+        o.amount::float AS order_amount,
+        LOWER(o.status) AS payment_status,
+        o.payment_method,
+        o.paid_at,
+        o.cashfree_order_id
+      FROM consultation_bookings cb
+      LEFT JOIN orders o ON o.id = cb.order_id
+      WHERE ${whereClause}
+      ORDER BY cb.created_at DESC
+      LIMIT $${limitIdx} OFFSET $${offsetIdx};`,
+      queryParams
+    )
+
+    res.status(200).json({
+      success: true,
+      bookings: rows,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    })
+  } catch (err: any) {
+    console.error('[Admin:Bookings] Error fetching bookings:', err)
+    res.status(500).json({ error: 'Failed to retrieve consultation bookings' })
+  }
+})
+
+// PATCH /api/admin/bookings/:id - update status and admin_notes
+const UpdateBookingSchema = z.object({
+  status: z.enum(['new', 'confirmed', 'completed', 'cancelled']).optional(),
+  admin_notes: z.string().trim().max(2000).optional().nullable(),
+})
+
+adminRouter.patch('/bookings/:id', async (req: Request, res: Response) => {
+  const { id } = req.params
+  const parseResult = UpdateBookingSchema.safeParse(req.body)
+
+  if (!parseResult.success) {
+    res.status(400).json({ error: 'Validation error', details: parseResult.error.flatten().fieldErrors })
+    return
+  }
+
+  const { status, admin_notes } = parseResult.data
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE consultation_bookings
+       SET status = COALESCE($1, status),
+           admin_notes = CASE WHEN $2::text IS NOT NULL THEN $2 ELSE admin_notes END,
+           updated_at = timezone('utc'::text, now())
+       WHERE id = $3
+       RETURNING *;`,
+      [status || null, admin_notes !== undefined ? admin_notes : null, id]
+    )
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: 'Booking not found' })
+      return
+    }
+
+    res.status(200).json({ success: true, booking: rows[0] })
+  } catch (err: any) {
+    console.error('[Admin:Bookings:Update] Error:', err)
+    res.status(500).json({ error: 'Failed to update booking' })
   }
 })
 
@@ -2190,7 +2362,7 @@ const CreateEbookSchema = z.object({
   is_visible: z
     .union([z.boolean(), z.string().transform((val) => val === 'true')])
     .default(true),
-  price: z.coerce.number().optional().default(0),
+  price: z.coerce.number().min(0).max(100000).optional().default(0),
 })
 
 const UpdateEbookSchema = z.object({
@@ -2216,7 +2388,7 @@ const UpdateEbookSchema = z.object({
   is_visible: z
     .union([z.boolean(), z.string().transform((val) => val === 'true')])
     .optional(),
-  price: z.coerce.number().optional().default(0),
+  price: z.coerce.number().min(0).max(100000).optional(),
 })
 
 const EbooksReorderSchema = z.object({
@@ -2322,10 +2494,11 @@ adminRouter.post(
       )
       const nextPos = posRes.rows[0]?.next_pos || 1
 
-      // 3. Insert record with price = 0
+      // 3. Insert record with validated price
+      const ebookPrice = parseResult.data.price ?? 0
       const { rows } = await pool.query(
         `INSERT INTO ebooks (title, description, cover_image_url, storage_path, file_name, size_bytes, price, position, is_visible)
-         VALUES ($1, $2, $3, $4, $5, $6, 0, $7, $8)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING id, title, description, cover_image_url, file_name, size_bytes, price, position, is_visible, created_at, updated_at;`,
         [
           title,
@@ -2334,6 +2507,7 @@ adminRouter.post(
           storagePath,
           fileName,
           sizeBytes,
+          ebookPrice,
           nextPos,
           is_visible !== false,
         ]
@@ -2430,7 +2604,7 @@ adminRouter.put(
         oldStoragePathToDelete = existing.storage_path
       }
 
-      const { title, description, cover_image_url, is_visible } = parseResult.data
+      const { title, description, cover_image_url, is_visible, price } = parseResult.data
 
       const { rows } = await pool.query(
         `UPDATE ebooks
@@ -2441,9 +2615,9 @@ adminRouter.put(
              storage_path = $5,
              file_name = $6,
              size_bytes = $7,
-             price = 0,
+             price = CASE WHEN $8::numeric IS NOT NULL THEN $8 ELSE price END,
              updated_at = timezone('utc'::text, now())
-         WHERE id = $8
+         WHERE id = $9
          RETURNING id, title, description, cover_image_url, file_name, size_bytes, price, position, is_visible, created_at, updated_at;`,
         [
           title || null,
@@ -2453,6 +2627,7 @@ adminRouter.put(
           newStoragePath,
           newFileName,
           newSizeBytes,
+          price !== undefined ? price : null,
           id,
         ]
       )
@@ -3263,18 +3438,26 @@ adminRouter.get('/report-orders', async (req: Request, res: Response) => {
          ro.birth_time,
          ro.birth_time_unknown,
          ro.birth_place,
+         ro.details,
          ro.notes,
          ro.amount,
          ro.status,
+         ro.consent,
+         ro.consent_at,
          ro.delivered_pdf_path,
          ro.delivered_file_name,
          ro.delivered_at,
          ro.admin_notes,
          ro.created_at,
          ro.updated_at,
+         LOWER(o.status) AS payment_status,
+         o.payment_method,
+         o.paid_at,
+         o.cashfree_order_id,
          u.name AS user_account_name,
          u.email AS user_account_email
        FROM report_orders ro
+       LEFT JOIN orders o ON o.id = ro.order_id
        LEFT JOIN users u ON u.id = ro.user_id
        WHERE ${whereClause}
        ORDER BY ro.created_at DESC
@@ -3312,9 +3495,14 @@ adminRouter.get('/report-orders/:id', async (req: Request, res: Response) => {
     const { rows } = await pool.query(
       `SELECT 
          ro.*,
+         LOWER(o.status) AS payment_status,
+         o.payment_method,
+         o.paid_at,
+         o.cashfree_order_id,
          u.name AS user_account_name,
          u.email AS user_account_email
        FROM report_orders ro
+       LEFT JOIN orders o ON o.id = ro.order_id
        LEFT JOIN users u ON u.id = ro.user_id
        WHERE ro.id = $1;`,
       [id]
