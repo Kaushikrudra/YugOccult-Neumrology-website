@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react'
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { Routes, Route, Outlet } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import FloatingWhatsApp from './components/FloatingWhatsApp'
@@ -18,6 +18,10 @@ const Login = lazy(() => import('./pages/Login'))
 const Signup = lazy(() => import('./pages/Signup'))
 const Account = lazy(() => import('./pages/Account'))
 const PaymentStatus = lazy(() => import('./pages/PaymentStatus'))
+const LegalPage = lazy(() => import('./pages/LegalPage'))
+const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const NotFound = lazy(() => import('./pages/NotFound'))
 
 // Lazy-loaded administrative views
 const AdminLogin = lazy(() => import('./pages/admin/AdminLogin'))
@@ -33,7 +37,9 @@ const AdminBookings = lazy(() => import('./pages/admin/AdminBookings'))
 const AdminConsultation = lazy(() => import('./pages/admin/AdminConsultation'))
 const AdminEnquiries = lazy(() => import('./pages/admin/AdminEnquiries'))
 const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'))
+const AdminLegalPages = lazy(() => import('./pages/admin/AdminLegalPages'))
 const AdminSiteSettings = lazy(() => import('./pages/admin/AdminSiteSettings'))
+const AdminNotFound = lazy(() => import('./pages/admin/AdminNotFound'))
 
 // Branded loading fallback for lazy bundles
 const LoadingFallback: React.FC = () => (
@@ -80,10 +86,16 @@ export const App: React.FC = () => {
               <Route path="/courses" element={<Courses />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/contact" element={<Contact />} />
+              <Route path="/terms" element={<LegalPage />} />
+              <Route path="/privacy-policy" element={<LegalPage />} />
+              <Route path="/refund-policy" element={<LegalPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/signup" element={<Signup />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/account" element={<Account />} />
               <Route path="/payment/status" element={<PaymentStatus />} />
+              <Route path="*" element={<NotFound />} />
             </Route>
 
             {/* Admin Authentication Route (No Navbar/Footer/WhatsApp) */}
@@ -103,12 +115,11 @@ export const App: React.FC = () => {
                 <Route path="consultation" element={<AdminConsultation />} />
                 <Route path="enquiries" element={<AdminEnquiries />} />
                 <Route path="orders" element={<AdminOrders />} />
+                <Route path="legal-pages" element={<AdminLegalPages />} />
                 <Route path="site-settings" element={<AdminSiteSettings />} />
+                <Route path="*" element={<AdminNotFound />} />
               </Route>
             </Route>
-
-            {/* Fallback route back to home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
       </SiteSettingsProvider>

@@ -138,10 +138,26 @@ export const Footer: React.FC = () => {
               </li>
               <li>
                 <Link
-                  to="/contact#terms"
+                  to="/terms"
                   className="text-ivory/80 hover:text-accent transition-colors"
                 >
                   Terms &amp; Conditions
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/privacy-policy"
+                  className="text-ivory/80 hover:text-accent transition-colors"
+                >
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/refund-policy"
+                  className="text-ivory/80 hover:text-accent transition-colors"
+                >
+                  Refund Policy
                 </Link>
               </li>
             </ul>
@@ -211,15 +227,21 @@ export const Footer: React.FC = () => {
         <div className="pt-6 sm:pt-8 border-t border-secondary/30 flex flex-col sm:flex-row items-center justify-between text-xs text-ivory/60 gap-3 sm:gap-4 text-center sm:text-left">
           <p>© 2026 Yug Skill Institute. All rights reserved.</p>
           <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center sm:justify-end">
-            <Link to="/contact#terms" className="hover:text-accent transition-colors">
-              Terms &amp; Conditions
+            <Link to="/terms" className="hover:text-accent transition-colors">
+              Terms
+            </Link>
+            <span className="text-ivory/30">•</span>
+            <Link to="/privacy-policy" className="hover:text-accent transition-colors">
+              Privacy Policy
+            </Link>
+            <span className="text-ivory/30">•</span>
+            <Link to="/refund-policy" className="hover:text-accent transition-colors">
+              Refund Policy
             </Link>
             <span className="text-ivory/30">•</span>
             <Link to="/admin/login" className="hover:text-accent transition-colors">
               Portal Login
             </Link>
-            <span className="text-ivory/30">•</span>
-            <p className="text-ivory/50">Designed with Spiritual Wisdom &amp; Elegance</p>
           </div>
         </div>
       </Container>

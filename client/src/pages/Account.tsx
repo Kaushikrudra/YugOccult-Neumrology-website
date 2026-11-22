@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
 import Container from '../components/Container'
+import { usePageMeta } from '../lib/usePageMeta'
 
 interface EnrolledCourse {
   id: string
@@ -90,6 +91,12 @@ interface UserReportOrder {
 }
 
 export const Account: React.FC = () => {
+  usePageMeta({
+    title: 'My Account',
+    description: 'Access your enrolled courses, ebooks, reports, and purchase history.',
+    noindex: true,
+  })
+
   const { user, logout, isLoading: authLoading } = useAuth()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()

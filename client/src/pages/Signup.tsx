@@ -4,8 +4,14 @@ import { Lock, Mail, User, Phone, Sparkles, ShieldAlert, Eye, EyeOff, ArrowLeft 
 import { useAuth } from '../context/AuthContext'
 import Logo from '../components/Logo'
 import { ApiError } from '../lib/api'
+import { usePageMeta } from '../lib/usePageMeta'
 
 export const Signup: React.FC = () => {
+  usePageMeta({
+    title: 'Create Account',
+    description: 'Create an account to enroll in courses and track your consultations.',
+    noindex: true,
+  })
   const { signup } = useAuth()
   const navigate = useNavigate()
 

@@ -4,8 +4,14 @@ import { Lock, Mail, Eye, EyeOff, Sparkles, ShieldAlert, ArrowLeft } from 'lucid
 import { useAuth } from '../context/AuthContext'
 import Logo from '../components/Logo'
 import { ApiError } from '../lib/api'
+import { usePageMeta } from '../lib/usePageMeta'
 
 export const Login: React.FC = () => {
+  usePageMeta({
+    title: 'Sign In',
+    description: 'Sign in to access your course materials and consultations.',
+    noindex: true,
+  })
   const { user, login } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -125,12 +131,20 @@ export const Login: React.FC = () => {
           </div>
 
           <div>
-            <label
-              htmlFor="login-password"
-              className="block text-xs font-semibold uppercase tracking-wider text-[#2E2A5C] mb-2"
-            >
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label
+                htmlFor="login-password"
+                className="block text-xs font-semibold uppercase tracking-wider text-[#2E2A5C]"
+              >
+                Password
+              </label>
+              <Link
+                to="/forgot-password"
+                className="text-xs text-[#5B3E96] font-medium hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#2B2A3D]/40">
                 <Lock className="w-4 h-4" />

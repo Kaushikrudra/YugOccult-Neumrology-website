@@ -22,6 +22,7 @@ import { coursesData, Course } from '../data/courses'
 import { consultationData } from '../data/consultation'
 import { useSiteSettings } from '../context/SiteSettingsContext'
 import { api } from '../lib/api'
+import { usePageMeta } from '../lib/usePageMeta'
 
 interface HomeTestimonial {
   id: string
@@ -34,6 +35,14 @@ interface HomeTestimonial {
 
 export const Home: React.FC = () => {
   const { settings } = useSiteSettings()
+
+  usePageMeta({
+    title: '',
+    description:
+      settings.meta_description ||
+      'Online courses, ebooks, personalised reports and consultations in astrology, numerology and tarot from YugOccult Learning Academy.',
+    canonicalPath: '/',
+  })
 
   // Testimonial Carousel State (Strictly DB data, never mock fallback)
   const [testimonials, setTestimonials] = useState<HomeTestimonial[]>([])

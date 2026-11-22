@@ -21,6 +21,11 @@ import {
 } from '../services/enrollment'
 import { sendAdminPurchaseNotification } from '../services/email'
 import { syncOrderWithCashfree } from '../services/payments'
+import { sendMail } from '../services/mail'
+import {
+  buildAccessGrantedEmail,
+  buildReportDeliveredEmail,
+} from '../services/mailTemplates'
 
 export const adminRouter = Router()
 
@@ -124,6 +129,7 @@ const EnquiriesQuerySchema = PaginationSchema.extend({
   unread: z.enum(['true', 'false']).optional(),
   type: z.enum(['contact', 'free_kundli', 'kundli', 'ask_question', 'all']).optional(),
   lead_status: z.enum(['new', 'contacted', 'done', 'all']).optional(),
+  payment_status: z.enum(['pending', 'paid', 'failed', 'all']).optional(),
 })
 
 adminRouter.get('/enquiries', async (req: Request, res: Response) => {
@@ -133,7 +139,7 @@ adminRouter.get('/enquiries', async (req: Request, res: Response) => {
     return
   }
 
-  const { page, limit, unread, type, lead_status } = queryResult.data
+  const { page, limit, unread, type, lead_status, payment_status } = queryResult.data
   const offset = (page - 1) * limit
 
   try {
@@ -159,6 +165,11 @@ adminRouter.get('/enquiries', async (req: Request, res: Response) => {
       conditions.push(`lead_status = $${params.length}`)
     }
 
+    if (payment_status && payment_status !== 'all') {
+      params.push(payment_status)
+      conditions.push(`payment_status = $${params.length}`)
+    }
+
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : ''
 
     const countQuery = `SELECT COUNT(*)::int AS count FROM enquiries ${whereClause};`
@@ -170,7 +181,7 @@ adminRouter.get('/enquiries', async (req: Request, res: Response) => {
       SELECT id, name, email, phone, subject, message, is_read, created_at,
              enquiry_type, whatsapp_number, gender, birth_date, birth_time,
              birth_time_unknown, birth_place, question, consent, consent_at, lead_status,
-             amount, question_count
+             amount, question_count, order_id, payment_status
       FROM enquiries
       ${whereClause}
       ORDER BY created_at DESC
@@ -1051,6 +1062,24 @@ adminRouter.post('/enrollments', async (req: Request, res: Response) => {
       source: 'admin',
       grantedBy: req.user?.id || req.admin?.id || null,
     })
+
+    if (!result.wasAlreadyActive && targetUser.email) {
+      const emailContent = buildAccessGrantedEmail({
+        name: targetUser.name || undefined,
+        courseTitle: courseRes.rows[0].title,
+        accountUrl: `${process.env.CLIENT_URL || 'https://yugoccult.in'}/account`,
+        brandName: 'YugOccult Learning Academy',
+      })
+      sendMail({
+        to: targetUser.email,
+        subject: emailContent.subject,
+        text: emailContent.text,
+        html: emailContent.html,
+        template: 'accessGranted',
+      }).catch((mailErr) => {
+        console.error('[Admin:EnrollmentMail] Failed to notify user:', mailErr)
+      })
+    }
 
     res.status(201).json({
       success: true,
@@ -3689,6 +3718,25 @@ adminRouter.patch('/report-orders/:id', async (req: Request, res: Response) => {
       ]
     )
 
+    const updatedOrder = rows[0]
+    if (shouldSetDeliveredAt && updatedOrder && updatedOrder.customer_email) {
+      const emailContent = buildReportDeliveredEmail({
+        name: updatedOrder.customer_name || undefined,
+        reportTitle: updatedOrder.report_title || 'Astrology Report',
+        accountUrl: `${process.env.CLIENT_URL || 'https://yugoccult.in'}/account`,
+        brandName: 'YugOccult Learning Academy',
+      })
+      sendMail({
+        to: updatedOrder.customer_email,
+        subject: emailContent.subject,
+        text: emailContent.text,
+        html: emailContent.html,
+        template: 'reportDelivered',
+      }).catch((mailErr) => {
+        console.error('[Admin:ReportDeliverMail] Failed to notify customer:', mailErr)
+      })
+    }
+
     console.log(`[Admin:Action] admin=${req.user?.id} action=update_report_order order_id=${id}`)
     res.status(200).json({ success: true, order: rows[0] })
   } catch (err: any) {
@@ -3779,6 +3827,25 @@ adminRouter.post(
         })
       }
 
+      const deliveredOrder = rows[0]
+      if (deliveredOrder && deliveredOrder.customer_email) {
+        const emailContent = buildReportDeliveredEmail({
+          name: deliveredOrder.customer_name || undefined,
+          reportTitle: deliveredOrder.report_title || 'Astrology Report',
+          accountUrl: `${process.env.CLIENT_URL || 'https://yugoccult.in'}/account`,
+          brandName: 'YugOccult Learning Academy',
+        })
+        sendMail({
+          to: deliveredOrder.customer_email,
+          subject: emailContent.subject,
+          text: emailContent.text,
+          html: emailContent.html,
+          template: 'reportDelivered',
+        }).catch((mailErr) => {
+          console.error('[Admin:ReportDeliverMail] Failed to notify customer:', mailErr)
+        })
+      }
+
       console.log(`[Admin:Action] admin=${req.user?.id} action=deliver_report_order order_id=${id}`)
       res.status(200).json({ success: true, order: rows[0] })
     } catch (err: any) {
@@ -3829,6 +3896,124 @@ adminRouter.get('/report-orders/:id/file', async (req: Request, res: Response) =
   } catch (err) {
     console.error('[Admin:ReportOrders:File] Error generating download URL')
     res.status(500).json({ error: 'Failed to generate download URL' })
+  }
+})
+
+// -----------------------------------------------------------------------------
+// Legal Pages Management (A2)
+// -----------------------------------------------------------------------------
+const LegalPageUpdateSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(120, 'Title must not exceed 120 characters'),
+  body: z.string().trim().min(1, 'Body is required').max(20000, 'Body must not exceed 20000 characters'),
+})
+
+const LegalPageReviewedSchema = z.object({
+  reviewed: z.boolean(),
+})
+
+// GET /api/admin/pages
+adminRouter.get('/pages', async (_req: Request, res: Response) => {
+  try {
+    const { rows } = await pool.query<{
+      id: string
+      slug: string
+      title: string
+      body: string
+      reviewed: boolean
+      updated_at: string
+    }>(
+      `SELECT id, slug, title, body, reviewed, updated_at
+       FROM site_pages
+       ORDER BY CASE slug
+         WHEN 'terms' THEN 1
+         WHEN 'privacy-policy' THEN 2
+         WHEN 'refund-policy' THEN 3
+         ELSE 4
+       END ASC;`
+    )
+
+    res.status(200).json({ pages: rows })
+  } catch (err) {
+    console.error('[Admin:Pages] Error fetching legal pages:', err)
+    res.status(500).json({ error: 'Failed to retrieve legal pages' })
+  }
+})
+
+// PUT /api/admin/pages/:slug
+adminRouter.put('/pages/:slug', async (req: Request, res: Response) => {
+  const { slug } = req.params
+  if (!slug || !['terms', 'privacy-policy', 'refund-policy'].includes(slug)) {
+    res.status(404).json({ error: 'Page not found' })
+    return
+  }
+
+  const parseResult = LegalPageUpdateSchema.safeParse(req.body)
+  if (!parseResult.success) {
+    res.status(400).json({ error: 'Validation error', details: parseResult.error.flatten().fieldErrors })
+    return
+  }
+
+  const { title, body } = parseResult.data
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE site_pages
+       SET title = $1,
+           body = $2,
+           reviewed = false,
+           updated_at = timezone('utc'::text, now())
+       WHERE slug = $3
+       RETURNING id, slug, title, body, reviewed, updated_at;`,
+      [title, body, slug]
+    )
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: 'Page not found' })
+      return
+    }
+
+    res.status(200).json({ success: true, page: rows[0] })
+  } catch (err) {
+    console.error('[Admin:Pages:Update] Error updating legal page:', err)
+    res.status(500).json({ error: 'Failed to update legal page' })
+  }
+})
+
+// PATCH /api/admin/pages/:slug/reviewed
+adminRouter.patch('/pages/:slug/reviewed', async (req: Request, res: Response) => {
+  const { slug } = req.params
+  if (!slug || !['terms', 'privacy-policy', 'refund-policy'].includes(slug)) {
+    res.status(404).json({ error: 'Page not found' })
+    return
+  }
+
+  const parseResult = LegalPageReviewedSchema.safeParse(req.body)
+  if (!parseResult.success) {
+    res.status(400).json({ error: 'Validation error', details: parseResult.error.flatten().fieldErrors })
+    return
+  }
+
+  const { reviewed } = parseResult.data
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE site_pages
+       SET reviewed = $1,
+           updated_at = timezone('utc'::text, now())
+       WHERE slug = $2
+       RETURNING id, slug, title, body, reviewed, updated_at;`,
+      [reviewed, slug]
+    )
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: 'Page not found' })
+      return
+    }
+
+    res.status(200).json({ success: true, page: rows[0] })
+  } catch (err) {
+    console.error('[Admin:Pages:Reviewed] Error updating review status:', err)
+    res.status(500).json({ error: 'Failed to update review status' })
   }
 })
 

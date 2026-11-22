@@ -21,6 +21,7 @@ import { Ebook } from '../types/ebook'
 import { api } from '../lib/api'
 import { useAuth } from '../context/AuthContext'
 import { startCheckout } from '../lib/cashfree'
+import { usePageMeta } from '../lib/usePageMeta'
 
 const PREFERRED_CATEGORY_ORDER = [
   'Packages',
@@ -36,6 +37,13 @@ const PREFERRED_CATEGORY_ORDER = [
 ]
 
 export const Courses: React.FC = () => {
+  usePageMeta({
+    title: 'Courses & Ebooks',
+    description:
+      'Explore certified courses and instructional ebooks in Vedic astrology, Chaldean numerology, tarot reading, and Vastu.',
+    canonicalPath: '/courses',
+  })
+
   const { user } = useAuth()
   const navigate = useNavigate()
 

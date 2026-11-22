@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, Link } from 'react-router-dom'
 import {
   Mail,
   Phone,
@@ -23,6 +23,8 @@ import Container from '../components/Container'
 import Button from '../components/Button'
 import SectionHeading from '../components/SectionHeading'
 import { useSiteSettings } from '../context/SiteSettingsContext'
+import { api } from '../lib/api'
+import { usePageMeta } from '../lib/usePageMeta'
 
 interface FormState {
   name: string
@@ -30,6 +32,7 @@ interface FormState {
   phone: string
   subject: string
   message: string
+  website?: string
 }
 
 interface FormErrors {
@@ -38,11 +41,19 @@ interface FormErrors {
   phone?: string
   subject?: string
   message?: string
+  website?: string
 }
 
 export const Contact: React.FC = () => {
   const { settings } = useSiteSettings()
   const location = useLocation()
+
+  usePageMeta({
+    title: 'Contact',
+    description:
+      'Connect with YugOccult Learning Academy for Vedic astrology consultations, numerology queries, and course admissions.',
+    canonicalPath: '/contact',
+  })
 
   // Smoothly scroll to Terms & Conditions section if redirected via #terms
   useEffect(() => {
@@ -75,6 +86,7 @@ export const Contact: React.FC = () => {
     phone: '',
     subject: 'Astrology Consultation Enquiry',
     message: '',
+    website: '',
   })
 
   const [errors, setErrors] = useState<FormErrors>({})
@@ -84,9 +96,12 @@ export const Contact: React.FC = () => {
     phone: false,
     subject: false,
     message: false,
+    website: false,
   })
 
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
 
   // Validation function with clear spiritual & user-friendly messages
   const validateField = (name: keyof FormState, value: string): string | undefined => {
@@ -133,7 +148,7 @@ export const Contact: React.FC = () => {
   const validateAll = (data: FormState): FormErrors => {
     const newErrors: FormErrors = {}
     ;(Object.keys(data) as Array<keyof FormState>).forEach((field) => {
-      const error = validateField(field, data[field])
+      const error = validateField(field, data[field] || '')
       if (error) {
         newErrors[field] = error
       }
@@ -180,7 +195,7 @@ export const Contact: React.FC = () => {
     }))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     // Mark all as touched
@@ -190,6 +205,7 @@ export const Contact: React.FC = () => {
       phone: true,
       subject: true,
       message: true,
+      website: true,
     })
 
     const validationErrors = validateAll(formData)
@@ -205,18 +221,45 @@ export const Contact: React.FC = () => {
       return
     }
 
-    // Submission succeeded (mock local state)
-    setIsSubmitted(true)
+    setIsSubmitting(true)
+    setApiError(null)
+
+    try {
+      await api.post('/api/enquiries', {
+        name: formData.name.trim(),
+        email: formData.email.trim(),
+        phone: formData.phone.trim(),
+        subject: formData.subject.trim(),
+        message: formData.message.trim(),
+        website: formData.website?.trim() || undefined,
+      })
+      setIsSubmitted(true)
+    } catch (err: any) {
+      console.error('[ContactForm] Submission error:', err)
+      if (err?.status === 429) {
+        setApiError('Too many requests. Please wait a few minutes before sending another message.')
+      } else {
+        setApiError(
+          err?.message ||
+            'Failed to deliver your message. Please try again or connect directly on WhatsApp.'
+        )
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleReset = () => {
     setIsSubmitted(false)
+    setIsSubmitting(false)
+    setApiError(null)
     setFormData({
       name: '',
       email: '',
       phone: '',
       subject: 'Astrology Consultation Enquiry',
       message: '',
+      website: '',
     })
     setErrors({})
     setTouched({
@@ -225,6 +268,7 @@ export const Contact: React.FC = () => {
       phone: false,
       subject: false,
       message: false,
+      website: false,
     })
   }
 
@@ -388,10 +432,10 @@ export const Contact: React.FC = () => {
                       <CheckCircle2 className="w-7 h-7 text-accent" />
                     </div>
                     <h4 className="font-heading text-xl sm:text-2xl font-bold text-primary">
-                      Thank You for Reaching Out
+                      Thank You
                     </h4>
                     <p className="text-xs sm:text-sm text-ink/80 max-w-md mx-auto leading-relaxed">
-                      Your enquiry has been successfully recorded. Our Vedic coordinator will reach out to your provided phone number or email within 24 business hours.
+                      Thank you. We have received your message and will get back to you.
                     </p>
                     <div className="pt-2">
                       <Button
@@ -399,12 +443,36 @@ export const Contact: React.FC = () => {
                         size="sm"
                         onClick={handleReset}
                       >
-                        Send Another Message
+                        Send another message
                       </Button>
                     </div>
                   </div>
                 ) : (
                   <form onSubmit={handleSubmit} noValidate className="space-y-4 sm:space-y-5">
+                    {/* Royal Violet Error Alert */}
+                    {apiError && (
+                      <div className="p-4 rounded-xl bg-[#5B3E96]/10 border border-[#5B3E96]/20 text-[#5B3E96] text-xs sm:text-sm flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-[#5B3E96]" />
+                        <span>{apiError}</span>
+                      </div>
+                    )}
+
+                    {/* Honeypot field (hidden from genuine users) */}
+                    <div
+                      style={{ display: 'none', position: 'absolute', left: '-9999px' }}
+                      aria-hidden="true"
+                    >
+                      <label htmlFor="website">Website</label>
+                      <input
+                        id="website"
+                        name="website"
+                        type="text"
+                        tabIndex={-1}
+                        autoComplete="off"
+                        value={formData.website || ''}
+                        onChange={handleChange}
+                      />
+                    </div>
                     {/* Name & Email Row */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                       {/* Name Field */}
@@ -585,17 +653,28 @@ export const Contact: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Submit Button */}
+                    {/* Submit Button & Privacy Policy note */}
                     <div className="pt-2">
                       <Button
                         type="submit"
                         variant="cta"
                         size="md"
-                        className="w-full sm:w-auto gap-2"
+                        disabled={isSubmitting}
+                        className="w-full sm:w-auto gap-2 disabled:opacity-50"
                       >
-                        <span>Submit Enquiry</span>
+                        <span>{isSubmitting ? 'Sending Message...' : 'Submit Enquiry'}</span>
                         <Send className="w-4 h-4" />
                       </Button>
+                      <p className="text-xs text-ink/60 mt-3">
+                        By submitting, you agree to our{' '}
+                        <Link
+                          to="/privacy-policy"
+                          className="text-[#5B3E96] font-medium underline hover:text-primary transition-colors"
+                        >
+                          Privacy Policy
+                        </Link>
+                        .
+                      </p>
                     </div>
                   </form>
                 )}

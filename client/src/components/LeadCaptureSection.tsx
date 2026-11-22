@@ -10,11 +10,13 @@ import {
   ChevronDown,
   ChevronUp,
   Scroll,
-  ArrowRight,
   ShieldCheck,
   Check,
+  Lock,
 } from 'lucide-react'
 import Container from './Container'
+import { api } from '../lib/api'
+import { startCheckout } from '../lib/cashfree'
 
 interface FormErrors {
   name?: string
@@ -210,8 +212,6 @@ export const LeadCaptureSection: React.FC = () => {
 
     try {
       const payload = {
-        type: 'kundli',
-        amount: 499,
         name: fkName.trim(),
         gender: fkGender,
         birth_date: fkBirthDate,
@@ -223,21 +223,19 @@ export const LeadCaptureSection: React.FC = () => {
         website: websiteHoneypot,
       }
 
-      const res = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+      const res = await api.post<{ orderId: string; paymentSessionId: string }>(
+        '/api/payments/kundli-order',
+        payload
+      )
 
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to submit request.')
+      if (res?.paymentSessionId) {
+        await startCheckout(res.paymentSessionId)
+      } else {
+        throw new Error('Could not initiate payment session.')
       }
-
-      setFkSubmitted(true)
     } catch (err: any) {
-      console.error('[KundliRequest] Submission error:', err)
-      setFkErrors({ general: err.message || 'Something went wrong. Please try again.' })
+      console.error('[KundliRequest] Payment error:', err)
+      setFkErrors({ general: err?.message || 'Failed to initiate payment. Please try again.' })
     } finally {
       setIsSubmitting(false)
     }
@@ -329,9 +327,7 @@ export const LeadCaptureSection: React.FC = () => {
           : `Question 1: ${q1.trim()}\n\nQuestion 2: ${q2.trim()}\n\nQuestion 3: ${q3.trim()}`
 
       const payload: Record<string, any> = {
-        type: 'ask_question',
         question_count: questionTier,
-        amount: QUESTION_PRICING[questionTier],
         question: combinedQuestions,
         name: aaName.trim(),
         whatsapp_number: aaWhatsApp.trim(),
@@ -349,21 +345,19 @@ export const LeadCaptureSection: React.FC = () => {
         if (aaBirthPlace.trim()) payload.birth_place = aaBirthPlace.trim()
       }
 
-      const res = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
+      const res = await api.post<{ orderId: string; paymentSessionId: string }>(
+        '/api/payments/ask-question-order',
+        payload
+      )
 
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to submit question.')
+      if (res?.paymentSessionId) {
+        await startCheckout(res.paymentSessionId)
+      } else {
+        throw new Error('Could not initiate payment session.')
       }
-
-      setAaSubmitted(true)
     } catch (err: any) {
-      console.error('[AskQuestion] Submission error:', err)
-      setAaErrors({ general: err.message || 'Something went wrong. Please try again.' })
+      console.error('[AskQuestion] Payment error:', err)
+      setAaErrors({ general: err?.message || 'Failed to initiate payment. Please try again.' })
     } finally {
       setIsSubmitting(false)
     }
@@ -777,12 +771,12 @@ export const LeadCaptureSection: React.FC = () => {
                       {isSubmitting ? (
                         <>
                           <div className="w-4 h-4 border-2 border-ivory border-t-transparent rounded-full animate-spin" />
-                          <span>Processing Request...</span>
+                          <span>Securing Order & Opening Gateway...</span>
                         </>
                       ) : (
                         <>
-                          <span>Order Kundli Request • ₹499</span>
-                          <ArrowRight className="w-4 h-4 text-accent" />
+                          <Lock className="w-4 h-4 text-accent" />
+                          <span>Pay Online &amp; Order Kundli • ₹499</span>
                         </>
                       )}
                     </button>
@@ -1193,15 +1187,15 @@ export const LeadCaptureSection: React.FC = () => {
                       {isSubmitting ? (
                         <>
                           <div className="w-4 h-4 border-2 border-ivory border-t-transparent rounded-full animate-spin" />
-                          <span>Submitting Query...</span>
+                          <span>Securing Order & Opening Gateway...</span>
                         </>
                       ) : (
                         <>
+                          <Lock className="w-4 h-4 text-accent" />
                           <span>
-                            Ask {questionTier} Question{questionTier > 1 ? 's' : ''} • ₹
+                            Pay Online &amp; Ask {questionTier} Question{questionTier > 1 ? 's' : ''} • ₹
                             {QUESTION_PRICING[questionTier].toLocaleString('en-IN')}
                           </span>
-                          <ArrowRight className="w-4 h-4 text-accent" />
                         </>
                       )}
                     </button>

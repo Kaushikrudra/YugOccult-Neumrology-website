@@ -30,6 +30,7 @@ import { useSiteSettings } from '../context/SiteSettingsContext'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
 import { startCheckout } from '../lib/cashfree'
+import { usePageMeta } from '../lib/usePageMeta'
 
 const AFTERNOON_SLOTS = [
   '12:00 PM - 01:00 PM',
@@ -47,6 +48,13 @@ const EVENING_SLOTS = [
 const ALL_SLOTS = [...AFTERNOON_SLOTS, ...EVENING_SLOTS]
 
 export const Consultation: React.FC = () => {
+  usePageMeta({
+    title: 'Consultation',
+    description:
+      'Book a personalized one-on-one astrology, numerology, or tarot consultation session with our certified practitioner.',
+    canonicalPath: '/consultation',
+  })
+
   // Master consultation settings from API (with consultationData fallback)
   const [consultation, setConsultation] = useState({
     fee: consultationData.fee,

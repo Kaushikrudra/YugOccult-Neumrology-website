@@ -6,6 +6,12 @@ import { requireAuth } from '../middleware/auth'
 import { grantEnrollment } from '../services/enrollment'
 import { sendAdminPurchaseNotification } from '../services/email'
 import { isStorageConfigured, createSignedDownloadUrl } from '../services/storage'
+import { sendMail } from '../services/mail'
+import {
+  buildContactNotificationEmail,
+  buildLeadNotificationEmail,
+  buildAccessGrantedEmail,
+} from '../services/mailTemplates'
 
 export const publicRouter = Router()
 
@@ -70,6 +76,7 @@ const PublicEnquirySchema = z.object({
     .trim()
     .min(5, 'Message must be at least 5 characters')
     .max(2000, 'Message must not exceed 2000 characters'),
+  website: z.string().optional().nullable(),
 })
 
 // POST /api/enquiries
@@ -77,6 +84,15 @@ publicRouter.post(
   '/enquiries',
   enquiryRateLimiter,
   async (req: Request, res: Response) => {
+    // 1. Silent Honeypot Detection (Bot trap: return generic success without saving)
+    if (req.body?.website && typeof req.body.website === 'string' && req.body.website.trim() !== '') {
+      res.status(200).json({
+        success: true,
+        message: 'Thank you. We have received your message and will get back to you.',
+      })
+      return
+    }
+
     const parseResult = PublicEnquirySchema.safeParse(req.body)
     if (!parseResult.success) {
       res.status(400).json({
@@ -96,9 +112,31 @@ publicRouter.post(
         [name, email, phone, subject, message]
       )
 
+      // 2. Dispatch Non-Blocking Admin Notification
+      const adminEmail = process.env.ADMIN_NOTIFY_EMAIL || 'yanushka655@gmail.com'
+      const emailData = buildContactNotificationEmail({
+        name,
+        email,
+        phone,
+        subject,
+        message,
+        brandName: 'YugOccult Learning Academy',
+      })
+
+      sendMail({
+        to: adminEmail,
+        replyTo: email,
+        subject: emailData.subject,
+        text: emailData.text,
+        html: emailData.html,
+        template: 'contactNotification',
+      }).catch((mailErr) => {
+        console.error('[Public:ContactMail] Failed to notify admin:', mailErr)
+      })
+
       res.status(201).json({
         success: true,
-        message: 'Your enquiry has been received. Our team will contact you shortly.',
+        message: 'Thank you. We have received your message and will get back to you.',
         enquiryId: rows[0]?.id,
       })
     } catch (err) {
@@ -310,7 +348,30 @@ publicRouter.post(
         ]
       )
 
-      // 3. Trigger Email Notification to Admin (yanushka655@gmail.com)
+      // 3. Trigger Email Notification to Admin (ADMIN_NOTIFY_EMAIL / yanushka655@gmail.com)
+      const adminNotifyEmail = process.env.ADMIN_NOTIFY_EMAIL || 'yanushka655@gmail.com'
+      const leadEmail = buildLeadNotificationEmail({
+        type: data.type === 'ask_question' ? 'ask_question' : 'kundli',
+        name: data.name,
+        whatsappNumber: data.whatsapp_number,
+        amount,
+        birthDate: birthDate || undefined,
+        birthTime: birthTime || undefined,
+        birthPlace: birthPlace || undefined,
+        question: question || undefined,
+        brandName: 'YugOccult Learning Academy',
+      })
+
+      sendMail({
+        to: adminNotifyEmail,
+        subject: leadEmail.subject,
+        text: leadEmail.text,
+        html: leadEmail.html,
+        template: 'leadNotification',
+      }).catch((mailErr) => {
+        console.error('[Public:LeadsMail] Failed to notify admin:', mailErr)
+      })
+
       sendAdminPurchaseNotification({
         type: data.type === 'ask_question' ? 'ask_question' : 'kundli',
         name: data.name,
@@ -445,6 +506,23 @@ publicRouter.post(
         courseId: course.id,
         source: 'free',
       })
+
+      if (!wasAlreadyActive && req.user?.email) {
+        const emailContent = buildAccessGrantedEmail({
+          courseTitle: course.title,
+          accountUrl: `${process.env.CLIENT_URL || 'https://yugoccult.in'}/account`,
+          brandName: 'YugOccult Learning Academy',
+        })
+        sendMail({
+          to: req.user.email,
+          subject: emailContent.subject,
+          text: emailContent.text,
+          html: emailContent.html,
+          template: 'accessGranted',
+        }).catch((mailErr) => {
+          console.error('[Public:EnrollFreeMail] Failed to notify user:', mailErr)
+        })
+      }
 
       res.status(200).json({
         success: true,

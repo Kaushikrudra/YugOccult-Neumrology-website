@@ -44,6 +44,8 @@ interface Enquiry {
   lead_status?: 'new' | 'contacted' | 'done'
   amount?: number | null
   question_count?: number | null
+  order_id?: string | null
+  payment_status?: string | null
 }
 
 interface PaginationMeta {
@@ -247,6 +249,32 @@ export const AdminEnquiries: React.FC = () => {
     }
   }
 
+  // Badge render helper for payment_status
+  const renderPaymentBadge = (status?: string | null) => {
+    switch (status) {
+      case 'paid':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300">
+            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-700" />
+            Paid Online
+          </span>
+        )
+      case 'failed':
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-rose-100 text-rose-800 border border-rose-300">
+            Payment Failed
+          </span>
+        )
+      case 'pending':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-300">
+            Payment Pending
+          </span>
+        )
+    }
+  }
+
   // Badge render helper for lead_status
   const renderStatusBadge = (status?: string) => {
     switch (status) {
@@ -438,6 +466,7 @@ export const AdminEnquiries: React.FC = () => {
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex flex-col items-start gap-1.5">
                           {renderTypeBadge(enquiry.enquiry_type, enquiry.amount, enquiry.question_count)}
+                          {enquiry.enquiry_type !== 'contact' && renderPaymentBadge(enquiry.payment_status)}
                           {!enquiry.is_read ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-[#F08A24]/15 text-[#F08A24] border border-[#F08A24]/30">
                               <span className="w-1.5 h-1.5 rounded-full bg-[#F08A24]" />

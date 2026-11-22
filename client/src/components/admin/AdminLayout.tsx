@@ -78,6 +78,7 @@ export const AdminLayout: React.FC = () => {
     { name: 'Consultation', path: '/admin/consultation', icon: Calendar, end: false },
     { name: 'Enquiries', path: '/admin/enquiries', icon: MessageSquare, end: false },
     { name: 'Orders', path: '/admin/orders', icon: ShoppingBag, end: false },
+    { name: 'Legal Pages', path: '/admin/legal-pages', icon: FileText, end: false },
     { name: 'Site Settings', path: '/admin/site-settings', icon: SlidersHorizontal, end: false },
   ]
 

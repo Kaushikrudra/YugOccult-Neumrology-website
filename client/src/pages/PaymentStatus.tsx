@@ -12,14 +12,18 @@ import {
   Calendar,
   FileText,
   Home,
+  MessageCircle,
 } from 'lucide-react'
 import Container from '../components/Container'
 import { api } from '../lib/api'
+import { usePageMeta } from '../lib/usePageMeta'
 
 interface OrderStatusData {
   orderId: string
+  cashfreeOrderId?: string | null
+  customerName?: string | null
   status: 'paid' | 'pending' | 'failed' | 'cancelled' | string
-  type: 'course' | 'consultation' | 'ebook' | 'report' | string
+  type: 'course' | 'consultation' | 'ebook' | 'report' | 'kundli' | 'ask_question' | string
   referenceTitle: string | null
   amount: number
   paidAt: string | null
@@ -27,6 +31,12 @@ interface OrderStatusData {
 }
 
 export const PaymentStatus: React.FC = () => {
+  usePageMeta({
+    title: 'Payment Status',
+    description: 'Transaction confirmation and order verification status.',
+    noindex: true,
+  })
+
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const orderId = searchParams.get('order_id') || searchParams.get('orderId')
@@ -288,6 +298,16 @@ export const PaymentStatus: React.FC = () => {
                         Anushka Yadav ji and her Vedic analysis team will manually prepare your sacred report within 24 to 48 hours. The completed PDF will be uploaded to your account and notified via WhatsApp.
                       </p>
                     )}
+                    {order.type === 'kundli' && (
+                      <p className="leading-relaxed text-[#2B2A3D]/80">
+                        Namaste <strong>{order.customerName || 'Seeker'}</strong>! Your Kundli analysis request (<strong>₹{order.amount || 499}</strong>) has been registered and payment confirmed. Anushka Yadav ji will personally review your birth chart and connect with you directly on WhatsApp.
+                      </p>
+                    )}
+                    {order.type === 'ask_question' && (
+                      <p className="leading-relaxed text-[#2B2A3D]/80">
+                        Namaste <strong>{order.customerName || 'Seeker'}</strong>! Your question submission has been received and payment confirmed. Anushka Yadav ji will analyze your astrological chart and deliver detailed guidance directly on WhatsApp.
+                      </p>
+                    )}
                   </div>
                 )}
 
@@ -330,6 +350,21 @@ export const PaymentStatus: React.FC = () => {
                           <span>View My Account</span>
                           <ArrowRight className="w-4 h-4 text-[#C9A227]" />
                         </Link>
+                      )}
+                      {(order.type === 'kundli' || order.type === 'ask_question') && (
+                        <a
+                          href={`https://wa.me/918922946307?text=${encodeURIComponent(
+                            `Namaste Anushka Ji, I have completed the online payment (₹${order.amount}) for my ${
+                              order.type === 'kundli' ? 'Kundli Analysis Request' : 'Astrology Question'
+                            } (Order ID: ${order.cashfreeOrderId || order.orderId}) for ${order.customerName || 'Seeker'}. Please review my submission.`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full sm:w-auto px-6 py-3 rounded-full bg-[#1FAF38] hover:bg-[#1B9931] text-white text-xs sm:text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-sm"
+                        >
+                          <MessageCircle className="w-4 h-4 text-white" />
+                          <span>Confirm on WhatsApp</span>
+                        </a>
                       )}
                       <Link
                         to="/"

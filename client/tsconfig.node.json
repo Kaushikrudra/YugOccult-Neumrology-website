@@ -9,6 +9,7 @@
     "moduleResolution": "bundler",
     "isolatedModules": true,
     "noEmit": true,
+    "types": ["node"],
 
     /* Linting */
     "strict": true,

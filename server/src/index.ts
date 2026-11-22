@@ -7,6 +7,7 @@ import dotenv from 'dotenv'
 import { authRouter } from './routes/auth'
 import { adminRouter } from './routes/admin'
 import { publicRouter } from './routes/public'
+import { pagesRouter } from './routes/pages'
 import { accountRouter } from './routes/account'
 import { paymentsRouter, handlePaymentsWebhook } from './routes/payments'
 import { getJwtSecret } from './middleware/auth'
@@ -29,14 +30,14 @@ try {
 
 const app = express()
 const PORT = Number(process.env.PORT) || 5000
-const HOST = '0.0.0.0'
+const HOST = process.env.HOST || '0.0.0.0'
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173'
 const normalizedClientUrl = CLIENT_URL.replace(/\/+$/, '')
 
-// Trust proxy hops for Netlify (proxy 1) -> Render (proxy 2) architecture
-// Default: 2 in production, 0 in development. Never boolean true to avoid rate-limiter validation errors.
+// Trust proxy hops for VPS Nginx reverse proxy architecture (proxy 1)
+// Default: 1 in production, 0 in development. Never boolean true to avoid rate-limiter validation errors.
 const rawTrustHops = process.env.TRUST_PROXY_HOPS
-const defaultHops = process.env.NODE_ENV === 'production' ? 2 : 0
+const defaultHops = process.env.NODE_ENV === 'production' ? 1 : 0
 const trustProxyHops =
   rawTrustHops !== undefined && !isNaN(parseInt(rawTrustHops, 10))
     ? parseInt(rawTrustHops, 10)
@@ -99,6 +100,7 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 // Public Routes (Enquiries submission, etc.)
 app.use('/api', publicRouter)
+app.use('/api', pagesRouter)
 
 // Auth Routes (/api/auth/login, /api/auth/logout, /api/auth/me)
 app.use('/api/auth', authRouter)

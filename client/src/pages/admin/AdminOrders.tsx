@@ -11,6 +11,7 @@ import {
   FileText,
   Sparkles,
   Filter,
+  HelpCircle,
 } from 'lucide-react'
 import { api } from '../../lib/api'
 
@@ -187,6 +188,10 @@ export const AdminOrders: React.FC = () => {
         return <FileText className="w-4 h-4 text-[#5B3E96] shrink-0" />
       case 'report':
         return <Sparkles className="w-4 h-4 text-[#5B3E96] shrink-0" />
+      case 'kundli':
+        return <Sparkles className="w-4 h-4 text-[#C9A227] shrink-0" />
+      case 'ask_question':
+        return <HelpCircle className="w-4 h-4 text-[#F08A24] shrink-0" />
       default:
         return <ShoppingBag className="w-4 h-4 text-[#5B3E96] shrink-0" />
     }
@@ -255,6 +260,8 @@ export const AdminOrders: React.FC = () => {
             <option value="consultation">Consultation Bookings</option>
             <option value="ebook">Sacred Ebooks</option>
             <option value="report">Personalised Reports</option>
+            <option value="kundli">Kundli Requests</option>
+            <option value="ask_question">Astrology Questions</option>
           </select>
         </div>
       </div>

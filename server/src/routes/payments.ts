@@ -674,6 +674,323 @@ paymentsRouter.post(
 )
 
 // -----------------------------------------------------------------------------
+// POST /api/payments/kundli-order (auth optional)
+// Online Cashfree payment initiation for Kundli Analysis (₹499)
+// -----------------------------------------------------------------------------
+const KundliOrderSchema = z.object({
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80),
+  whatsapp_number: z.string().trim().refine(
+    (val) => {
+      const digits = val.replace(/\D/g, '')
+      return digits.length >= 10 && digits.length <= 15
+    },
+    { message: 'Valid 10 to 15-digit WhatsApp number required' }
+  ),
+  email: z.string().trim().email('Valid email required').optional().nullable(),
+  gender: z.enum(['male', 'female', 'other'], {
+    message: 'Please select a gender (Male, Female, or Other)',
+  }),
+  birth_date: z.string().trim().refine(
+    (val) => {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(val)) return false
+      const d = new Date(val + 'T00:00:00Z')
+      const minDate = new Date('1900-01-01T00:00:00Z')
+      const now = new Date()
+      return !isNaN(d.getTime()) && d >= minDate && d <= now
+    },
+    { message: 'Birth date must be between 1900 and today' }
+  ),
+  birth_time: z.string().trim().optional().nullable(),
+  birth_time_unknown: z.boolean().default(false),
+  birth_place: z.string().trim().min(2, 'Birth place must be at least 2 characters').max(120),
+  consent: z.boolean().refine((val) => val === true, {
+    message: 'You must agree to the terms to proceed',
+  }),
+  website: z.string().optional().nullable(),
+})
+
+paymentsRouter.post(
+  '/kundli-order',
+  optionalAuth,
+  orderCreateLimiter,
+  async (req: Request, res: Response) => {
+    if (!isCashfreeConfigured()) {
+      res.status(503).json({ error: 'Payments not configured' })
+      return
+    }
+
+    if (req.body?.website && typeof req.body.website === 'string' && req.body.website.trim() !== '') {
+      res.status(200).json({ orderId: 'ok', paymentSessionId: '' })
+      return
+    }
+
+    const parseResult = KundliOrderSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({ error: 'Validation error', details: parseResult.error.flatten().fieldErrors })
+      return
+    }
+
+    const data = parseResult.data
+    const userId = req.user?.id || null
+    const cleanPhone = data.whatsapp_number.replace(/\D/g, '').slice(-10)
+    const fixedAmount = 499
+
+    try {
+      const orderId = crypto.randomUUID()
+      const cashfreeOrderId = generateCashfreeOrderId()
+
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+
+        // 1. Insert order record
+        await client.query(
+          `INSERT INTO orders (
+             id, user_id, type, reference_id, reference_title,
+             amount, status, cashfree_order_id,
+             customer_name, customer_email, customer_phone
+           ) VALUES ($1, $2, 'kundli', NULL, $3, $4, 'pending', $5, $6, $7, $8);`,
+          [
+            orderId,
+            userId,
+            'Kundli Analysis Request (₹499)',
+            fixedAmount,
+            cashfreeOrderId,
+            data.name,
+            data.email || 'support@yugskill.com',
+            cleanPhone,
+          ]
+        )
+
+        // 2. Insert into enquiries linked to order
+        const birthDate = data.birth_date && data.birth_date.trim() !== '' ? data.birth_date : null
+        const birthTime = data.birth_time_unknown || !data.birth_time ? null : data.birth_time.trim()
+
+        await client.query(
+          `INSERT INTO enquiries (
+             name, phone, whatsapp_number, email, subject, message,
+             enquiry_type, gender, birth_date, birth_time, birth_time_unknown,
+             birth_place, consent, consent_at, lead_status,
+             amount, question_count, order_id, payment_status
+           ) VALUES (
+             $1, $2, $3, $4, $5, $6,
+             'kundli', $7, $8, $9, $10,
+             $11, true, timezone('utc'::text, now()), 'new',
+             $12, 1, $13, 'pending'
+           );`,
+          [
+            data.name,
+            cleanPhone,
+            data.whatsapp_number.trim(),
+            data.email || null,
+            'Kundli Request (₹499)',
+            `Kundli Request (₹499) for ${data.name}`,
+            data.gender,
+            birthDate,
+            birthTime,
+            data.birth_time_unknown,
+            data.birth_place.trim(),
+            fixedAmount,
+            orderId,
+          ]
+        )
+
+        // 3. Initiate Cashfree Order
+        const cfResult = await createCashfreeOrder({
+          orderId: cashfreeOrderId,
+          orderAmount: fixedAmount,
+          customerId: userId || `guest_${cleanPhone}`,
+          customerName: data.name,
+          customerEmail: data.email || 'support@yugskill.com',
+          customerPhone: cleanPhone,
+          returnUrl: getClientReturnUrl(),
+          notifyUrl: getWebhookNotifyUrl(),
+        })
+
+        await client.query(
+          `UPDATE orders SET payment_session_id = $1 WHERE id = $2;`,
+          [cfResult.paymentSessionId, orderId]
+        )
+
+        await client.query('COMMIT')
+
+        res.status(200).json({
+          orderId: cashfreeOrderId,
+          paymentSessionId: cfResult.paymentSessionId,
+        })
+      } catch (err) {
+        await client.query('ROLLBACK')
+        throw err
+      } finally {
+        client.release()
+      }
+    } catch (err: any) {
+      console.error('[Payments:KundliOrder] Error:', err?.message || err)
+      res.status(500).json({ error: err?.message || 'Failed to initiate Kundli payment' })
+    }
+  }
+)
+
+// -----------------------------------------------------------------------------
+// POST /api/payments/ask-question-order (auth optional)
+// Online Cashfree payment initiation for Ask the Astrologer Questions (₹699, ₹999, ₹1599)
+// -----------------------------------------------------------------------------
+const QUESTION_TIER_PRICING: Record<1 | 2 | 3, number> = {
+  1: 699,
+  2: 999,
+  3: 1599,
+}
+
+const AskQuestionOrderSchema = z.object({
+  name: z.string().trim().min(2, 'Name must be at least 2 characters').max(80),
+  whatsapp_number: z.string().trim().refine(
+    (val) => {
+      const digits = val.replace(/\D/g, '')
+      return digits.length >= 10 && digits.length <= 15
+    },
+    { message: 'Valid 10 to 15-digit WhatsApp number required' }
+  ),
+  email: z.string().trim().email('Valid email required').optional().nullable(),
+  question_count: z.union([z.literal(1), z.literal(2), z.literal(3)]).default(1),
+  question: z.string().trim().min(5, 'Question must be at least 5 characters').max(3000),
+  gender: z.enum(['male', 'female', 'other']).optional().nullable(),
+  birth_date: z.string().trim().optional().nullable(),
+  birth_time: z.string().trim().optional().nullable(),
+  birth_time_unknown: z.boolean().optional().default(false),
+  birth_place: z.string().trim().max(120).optional().nullable(),
+  consent: z.boolean().refine((val) => val === true, {
+    message: 'You must agree to the terms to proceed',
+  }),
+  website: z.string().optional().nullable(),
+})
+
+paymentsRouter.post(
+  '/ask-question-order',
+  optionalAuth,
+  orderCreateLimiter,
+  async (req: Request, res: Response) => {
+    if (!isCashfreeConfigured()) {
+      res.status(503).json({ error: 'Payments not configured' })
+      return
+    }
+
+    if (req.body?.website && typeof req.body.website === 'string' && req.body.website.trim() !== '') {
+      res.status(200).json({ orderId: 'ok', paymentSessionId: '' })
+      return
+    }
+
+    const parseResult = AskQuestionOrderSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({ error: 'Validation error', details: parseResult.error.flatten().fieldErrors })
+      return
+    }
+
+    const data = parseResult.data
+    const userId = req.user?.id || null
+    const cleanPhone = data.whatsapp_number.replace(/\D/g, '').slice(-10)
+    const count = data.question_count as 1 | 2 | 3
+    const amount = QUESTION_TIER_PRICING[count] || 699
+    const subject = `Astrology Question (${count} Qs - ₹${amount})`
+
+    try {
+      const orderId = crypto.randomUUID()
+      const cashfreeOrderId = generateCashfreeOrderId()
+
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+
+        // 1. Insert order record
+        await client.query(
+          `INSERT INTO orders (
+             id, user_id, type, reference_id, reference_title,
+             amount, status, cashfree_order_id,
+             customer_name, customer_email, customer_phone
+           ) VALUES ($1, $2, 'ask_question', NULL, $3, $4, 'pending', $5, $6, $7, $8);`,
+          [
+            orderId,
+            userId,
+            subject,
+            amount,
+            cashfreeOrderId,
+            data.name,
+            data.email || 'support@yugskill.com',
+            cleanPhone,
+          ]
+        )
+
+        // 2. Insert into enquiries linked to order
+        const birthDate = data.birth_date && data.birth_date.trim() !== '' ? data.birth_date : null
+        const birthTime = data.birth_time_unknown || !data.birth_time ? null : data.birth_time.trim()
+
+        await client.query(
+          `INSERT INTO enquiries (
+             name, phone, whatsapp_number, email, subject, message,
+             enquiry_type, gender, birth_date, birth_time, birth_time_unknown,
+             birth_place, question, consent, consent_at, lead_status,
+             amount, question_count, order_id, payment_status
+           ) VALUES (
+             $1, $2, $3, $4, $5, $6,
+             'ask_question', $7, $8, $9, $10,
+             $11, $12, true, timezone('utc'::text, now()), 'new',
+             $13, $14, $15, 'pending'
+           );`,
+          [
+            data.name,
+            cleanPhone,
+            data.whatsapp_number.trim(),
+            data.email || null,
+            subject,
+            data.question.trim(),
+            data.gender || null,
+            birthDate,
+            birthTime,
+            data.birth_time_unknown || false,
+            data.birth_place ? data.birth_place.trim() : null,
+            data.question.trim(),
+            amount,
+            count,
+            orderId,
+          ]
+        )
+
+        // 3. Initiate Cashfree Order
+        const cfResult = await createCashfreeOrder({
+          orderId: cashfreeOrderId,
+          orderAmount: amount,
+          customerId: userId || `guest_${cleanPhone}`,
+          customerName: data.name,
+          customerEmail: data.email || 'support@yugskill.com',
+          customerPhone: cleanPhone,
+          returnUrl: getClientReturnUrl(),
+          notifyUrl: getWebhookNotifyUrl(),
+        })
+
+        await client.query(
+          `UPDATE orders SET payment_session_id = $1 WHERE id = $2;`,
+          [cfResult.paymentSessionId, orderId]
+        )
+
+        await client.query('COMMIT')
+
+        res.status(200).json({
+          orderId: cashfreeOrderId,
+          paymentSessionId: cfResult.paymentSessionId,
+        })
+      } catch (err) {
+        await client.query('ROLLBACK')
+        throw err
+      } finally {
+        client.release()
+      }
+    } catch (err: any) {
+      console.error('[Payments:AskQuestionOrder] Error:', err?.message || err)
+      res.status(500).json({ error: err?.message || 'Failed to initiate question payment' })
+    }
+  }
+)
+
+// -----------------------------------------------------------------------------
 // GET /api/payments/status/:orderId (auth optional)
 // -----------------------------------------------------------------------------
 paymentsRouter.get('/status/:orderId', optionalAuth, async (req: Request, res: Response) => {
@@ -706,6 +1023,8 @@ paymentsRouter.get('/status/:orderId', optionalAuth, async (req: Request, res: R
     // Return sanitized status info without customer PII
     res.status(200).json({
       orderId: order.cashfree_order_id || order.id,
+      cashfreeOrderId: order.cashfree_order_id,
+      customerName: order.customer_name,
       status: order.status,
       type: order.type,
       referenceTitle: order.reference_title,

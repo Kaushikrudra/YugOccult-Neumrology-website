@@ -1,10 +1,16 @@
 import { Router, Request, Response } from 'express'
+import crypto from 'crypto'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import { z } from 'zod'
-import rateLimit from 'express-rate-limit'
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit'
 import { pool } from '../db'
 import { getJwtSecret, requireAuth } from '../middleware/auth'
+import { sendMail } from '../services/mail'
+import {
+  buildPasswordResetEmail,
+  buildPasswordChangedEmail,
+} from '../services/mailTemplates'
 
 export const authRouter = Router()
 
@@ -283,3 +289,236 @@ authRouter.get('/me', requireAuth, async (req: Request, res: Response) => {
     })
   }
 })
+
+// -----------------------------------------------------------------------------
+// Rate Limiters for Password Reset
+// -----------------------------------------------------------------------------
+const forgotPasswordIpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.ip || '') || 'anonymous',
+  message: {
+    error: 'Too many password reset requests from this IP. Please try again after an hour.',
+  },
+})
+
+const forgotPasswordEmailLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const rawEmail = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : ''
+    return rawEmail ? `email_${rawEmail}` : ipKeyGenerator(req.ip || '') || 'anonymous'
+  },
+  message: {
+    error: 'Too many password reset requests for this email. Please check your inbox or try again later.',
+  },
+})
+
+const resetPasswordIpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => ipKeyGenerator(req.ip || '') || 'anonymous',
+  message: {
+    error: 'Too many reset attempts from this IP. Please try again later.',
+  },
+})
+
+const ForgotPasswordSchema = z.object({
+  email: z.string().trim().email('Please enter a valid email address'),
+})
+
+const ResetPasswordSchema = z.object({
+  token: z.string().trim().min(1, 'Reset token is required'),
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters long')
+    .max(72, 'Password must not exceed 72 characters'),
+})
+
+// -----------------------------------------------------------------------------
+// POST /api/auth/forgot-password
+// -----------------------------------------------------------------------------
+authRouter.post(
+  '/forgot-password',
+  forgotPasswordIpLimiter,
+  forgotPasswordEmailLimiter,
+  async (req: Request, res: Response) => {
+    const GENERIC_SUCCESS_MESSAGE =
+      'If an account exists for this email, we have sent a reset link.'
+
+    const parseResult = ForgotPasswordSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      // Return 200 generic message even on malformed input to prevent enumeration
+      res.status(200).json({ success: true, message: GENERIC_SUCCESS_MESSAGE })
+      return
+    }
+
+    const { email } = parseResult.data
+
+    try {
+      // Find user by email
+      const { rows } = await pool.query<{ id: string; name: string; email: string }>(
+        'SELECT id, name, email FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1;',
+        [email]
+      )
+
+      if (rows.length > 0) {
+        const user = rows[0]
+
+        // 1. Invalidate any existing unused tokens for this user
+        await pool.query(
+          "UPDATE password_reset_tokens SET used_at = timezone('utc'::text, now()) WHERE user_id = $1 AND used_at IS NULL;",
+          [user.id]
+        )
+
+        // 2. Generate cryptographically strong random token
+        const rawToken = crypto.randomBytes(32).toString('base64url')
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex')
+
+        // 3. Store SHA-256 hash in database with 1-hour expiration
+        await pool.query(
+          `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+           VALUES ($1, $2, timezone('utc'::text, now()) + interval '1 hour');`,
+          [user.id, tokenHash]
+        )
+
+        // 4. Construct reset link and dispatch non-blocking email
+        const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/+$/, '')
+        const resetUrl = `${clientUrl}/reset-password?token=${rawToken}`
+
+        const emailData = buildPasswordResetEmail({
+          name: user.name,
+          resetUrl,
+          brandName: 'YugOccult Learning Academy',
+        })
+
+        sendMail({
+          to: user.email,
+          subject: emailData.subject,
+          text: emailData.text,
+          html: emailData.html,
+          template: 'passwordReset',
+        }).catch((mailErr) => {
+          console.error('[Auth:ForgotPasswordMail] Failed to send email:', mailErr)
+        })
+      } else {
+        // Run dummy hash to balance timing against timing attacks
+        crypto.createHash('sha256').update('dummy-token-to-equalize-timing').digest('hex')
+      }
+
+      res.status(200).json({
+        success: true,
+        message: GENERIC_SUCCESS_MESSAGE,
+      })
+    } catch (err) {
+      console.error('[Auth:ForgotPassword] Error:', err)
+      // Always return 200 generic response
+      res.status(200).json({
+        success: true,
+        message: GENERIC_SUCCESS_MESSAGE,
+      })
+    }
+  }
+)
+
+// -----------------------------------------------------------------------------
+// POST /api/auth/reset-password
+// -----------------------------------------------------------------------------
+authRouter.post(
+  '/reset-password',
+  resetPasswordIpLimiter,
+  async (req: Request, res: Response) => {
+    const parseResult = ResetPasswordSchema.safeParse(req.body)
+    if (!parseResult.success) {
+      res.status(400).json({
+        error: 'Invalid password format. Password must be between 8 and 72 characters.',
+      })
+      return
+    }
+
+    const { token, password } = parseResult.data
+
+    try {
+      // 1. Hash the incoming token with SHA-256 to look up in DB
+      const tokenHash = crypto.createHash('sha256').update(token.trim()).digest('hex')
+
+      // 2. Look for valid, unexpired, unused token
+      const tokenQuery = `
+        SELECT t.id, t.user_id, t.expires_at, t.used_at, u.name, u.email
+        FROM password_reset_tokens t
+        JOIN users u ON t.user_id = u.id
+        WHERE t.token_hash = $1
+          AND t.used_at IS NULL
+          AND t.expires_at > timezone('utc'::text, now())
+        LIMIT 1;
+      `
+      const { rows } = await pool.query(tokenQuery, [tokenHash])
+
+      if (rows.length === 0) {
+        res.status(400).json({
+          error: 'This reset link is invalid or has expired.',
+        })
+        return
+      }
+
+      const resetRecord = rows[0]
+      const userId = resetRecord.user_id
+
+      // 3. Hash new password with bcrypt cost 12
+      const newPasswordHash = await bcrypt.hash(password, 12)
+
+      // 4. Update user password and mark all tokens for user as used in a transaction
+      const client = await pool.connect()
+      try {
+        await client.query('BEGIN')
+
+        await client.query(
+          "UPDATE users SET password_hash = $1, updated_at = timezone('utc'::text, now()) WHERE id = $2;",
+          [newPasswordHash, userId]
+        )
+
+        await client.query(
+          "UPDATE password_reset_tokens SET used_at = timezone('utc'::text, now()) WHERE user_id = $1;",
+          [userId]
+        )
+
+        await client.query('COMMIT')
+      } catch (txErr) {
+        await client.query('ROLLBACK')
+        throw txErr
+      } finally {
+        client.release()
+      }
+
+      // 5. Send confirmation email (fire-and-forget)
+      const emailData = buildPasswordChangedEmail({
+        name: resetRecord.name,
+        brandName: 'YugOccult Learning Academy',
+      })
+
+      sendMail({
+        to: resetRecord.email,
+        subject: emailData.subject,
+        text: emailData.text,
+        html: emailData.html,
+        template: 'passwordChanged',
+      }).catch((mailErr) => {
+        console.error('[Auth:PasswordChangedMail] Failed to send email:', mailErr)
+      })
+
+      res.status(200).json({
+        success: true,
+        message: 'Password has been reset successfully. Please log in with your new password.',
+      })
+    } catch (err) {
+      console.error('[Auth:ResetPassword] Error:', err)
+      res.status(500).json({ error: 'An unexpected error occurred while resetting your password.' })
+    }
+  }
+)

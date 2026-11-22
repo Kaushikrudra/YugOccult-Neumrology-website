@@ -19,8 +19,16 @@ import ReportCard from '../components/ReportCard'
 import { Report } from '../types/report'
 import { REPORT_SECTIONS } from '../data/reportSections'
 import { api } from '../lib/api'
+import { usePageMeta } from '../lib/usePageMeta'
 
 export const Reports: React.FC = () => {
+  usePageMeta({
+    title: 'Personalised Reports',
+    description:
+      'Order comprehensive horoscope blueprints, numerology analyses, and personalized astrological reports prepared from your birth details.',
+    canonicalPath: '/reports',
+  })
+
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')

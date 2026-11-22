@@ -1,10 +1,11 @@
 import { pool } from '../db'
 import { isCashfreeConfigured, fetchCashfreeOrder, fetchCashfreePayments } from './cashfree'
 import { grantEnrollment } from './enrollment'
+import { sendAdminPurchaseNotification } from './email'
 
 export interface OrderRecord {
   id: string
-  type: 'course' | 'consultation' | 'ebook' | 'report'
+  type: 'course' | 'consultation' | 'ebook' | 'report' | 'kundli' | 'ask_question'
   reference_id: string | null
   reference_title: string | null
   amount: number
@@ -165,6 +166,33 @@ export async function syncOrderWithCashfree(orderIdentifier: string): Promise<Sy
         } else if (order.type === 'consultation') {
           // Consultation booking remains 'new' (admin confirms), order is paid
           console.log(`[Payments:Fulfill] Paid consultation booking registered for order ${order.id}`)
+        } else if (order.type === 'kundli' || order.type === 'ask_question') {
+          const eqRes = await client.query(
+            `UPDATE enquiries
+             SET payment_status = 'paid'
+             WHERE order_id = $1
+             RETURNING name, whatsapp_number, email, amount, question_count, question, gender, birth_date, birth_time, birth_place;`,
+            [order.id]
+          )
+          console.log(`[Payments:Fulfill] Marked enquiry payment_status = 'paid' for order ${order.id}`)
+
+          // Dispatch Admin Notification if row found
+          if (eqRes.rows[0]) {
+            const eq = eqRes.rows[0]
+            sendAdminPurchaseNotification({
+              type: order.type === 'ask_question' ? 'ask_question' : 'kundli',
+              name: eq.name,
+              whatsappNumber: eq.whatsapp_number,
+              email: eq.email,
+              amount: Number(order.amount),
+              questionCount: eq.question_count || 1,
+              questions: eq.question,
+              gender: eq.gender,
+              birthDate: eq.birth_date,
+              birthTime: eq.birth_time,
+              birthPlace: eq.birth_place,
+            }).catch((err) => console.error('[Payments:Notify] Failed to dispatch admin notification:', err))
+          }
         }
 
         await client.query('COMMIT')
