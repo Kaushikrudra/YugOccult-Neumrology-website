@@ -33,7 +33,7 @@ export const homeAboutData: HomeAboutData = {
   heading: 'Meet Anushka Yadav',
   aboutParagraph:
     'Anushkaa Yadav is a multi-disciplinary spiritual guide and transformational coach dedicated to helping individuals realign their energy, purpose, and life direction. With years of experience in astrology, numerology, tarot, Vedic principles, mindset coaching, and the law of attraction, she blends ancient wisdom with modern psychological insight to bring clarity, healing, and empowerment to thousands of clients worldwide.',
-  photoUrl: '/images/anushka-about.png',
+  photoUrl: '/images/anushka-about.jpeg',
   photoAlt: 'Anushka Yadav at her consultation table',
   cards: {
     card1: {
