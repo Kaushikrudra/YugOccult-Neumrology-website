@@ -201,7 +201,7 @@ export const consultationData: ConsultationConfig = {
       id: 'faq-3',
       question: 'Are the remedies expensive or fear-inducing?',
       answer:
-        'Never. At YugSkills Learning Institute, our sacred philosophy strictly rejects fear-mongering and commercial ritual exploitation. We prescribe accessible, classical Vedic remedies such as mantra vibrations, dietary alignments, charitable donations (Daana), and optional natural gemstones.',
+        'Never. At Yug Skill Institute, our sacred philosophy strictly rejects fear-mongering and commercial ritual exploitation. We prescribe accessible, classical Vedic remedies such as mantra vibrations, dietary alignments, charitable donations (Daana), and optional natural gemstones.',
     },
     {
       id: 'faq-4',

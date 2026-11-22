@@ -252,7 +252,7 @@ export const Contact: React.FC = () => {
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-accent shrink-0" />
                   <h3 className="font-heading text-xl sm:text-2xl font-bold text-ivory">
-                    YugSkills Institute
+                    Yug Skill Institute
                   </h3>
                 </div>
                 <p className="text-ivory/80 text-xs sm:text-sm leading-relaxed">
@@ -310,7 +310,7 @@ export const Contact: React.FC = () => {
                             WhatsApp Guidance
                           </strong>
                           <a
-                            href={`https://wa.me/${cleanWhatsApp}?text=Hare%20Krishna,%20I%20would%20like%20to%20enquire%20about%20YugSkills%20Learning%20Institute%20consultations.`}
+                            href={`https://wa.me/${cleanWhatsApp}?text=Hare%20Krishna,%20I%20would%20like%20to%20enquire%20about%20Yug%20Skill%20Institute%20consultations.`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-ivory/90 hover:text-accent transition-colors font-medium"
@@ -623,7 +623,7 @@ export const Contact: React.FC = () => {
               Terms &amp; Conditions
             </h2>
             <p className="text-sm sm:text-base text-[#2B2A3D]/75 leading-relaxed">
-              Welcome to <strong>YugSkills Learning Institute</strong>. Please review these official
+              Welcome to <strong>Yug Skill Institute</strong>. Please review these official
               terms, 1-year course validity policies, payment security guidelines, and sacred consultation
               ethics governing your use of our platform.
             </p>
@@ -646,7 +646,7 @@ export const Contact: React.FC = () => {
                   1. Acceptance &amp; Sacred Purpose
                 </h3>
                 <p className="text-xs sm:text-sm text-[#2B2A3D]/75 leading-relaxed">
-                  By accessing <strong>YugSkills Learning Institute</strong>, purchasing courses,
+                  By accessing <strong>Yug Skill Institute</strong>, purchasing courses,
                   booking 1-on-1 consultations, or downloading ebooks &amp; reports, you agree to comply with
                   and be bound by these Terms. All sacred sciences—Vedic Astrology, Numerology, Tarot,
                   and Vastu—are offered with pure spiritual intent for personal empowerment and conscious living.
@@ -720,7 +720,7 @@ export const Contact: React.FC = () => {
                 <p className="text-xs sm:text-sm text-[#2B2A3D]/75 leading-relaxed">
                   All transactions are billed in Indian Rupees (₹) and processed via encrypted, bank-grade
                   protocols through Cashfree Payment Gateway (supporting UPI, Cards, NetBanking, and Wallets).
-                  YugSkills Learning Institute does not collect, store, or view sensitive payment credentials,
+                  Yug Skill Institute does not collect, store, or view sensitive payment credentials,
                   card numbers, or banking PINs.
                 </p>
               </div>

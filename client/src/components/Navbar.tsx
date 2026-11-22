@@ -38,12 +38,12 @@ export const Navbar: React.FC = () => {
     <header className="sticky top-0 z-40 bg-ivory/95 backdrop-blur-md border-b border-secondary/10 shadow-sm transition-all duration-200">
       <Container>
         <div className="flex items-center justify-between h-16 sm:h-20 md:h-22 lg:h-24">
-          {/* Logo - Full variant (emblem + YugSkills Learning Institute wordmark) across all screen sizes */}
+          {/* Logo - Full variant (emblem + Yug Skill Institute wordmark) across all screen sizes */}
           <Link
             to="/"
             onClick={closeMenu}
             className="flex items-center group focus:outline-none py-1.5 shrink min-w-0"
-            aria-label="YugSkills Learning Institute Home"
+            aria-label="Yug Skill Institute Home"
           >
             <Logo
               variant="full"

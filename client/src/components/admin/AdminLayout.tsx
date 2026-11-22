@@ -230,7 +230,7 @@ export const AdminLayout: React.FC = () => {
           <div className="flex items-center gap-2 text-xs font-medium text-[#2B2A3D]/70">
             <span>Admin</span>
             <span>/</span>
-            <span className="text-[#2E2A5C] font-semibold capitalize">YugSkills Learning Institute Portal</span>
+            <span className="text-[#2E2A5C] font-semibold capitalize">Yug Skill Institute Portal</span>
           </div>
 
           <div className="flex items-center gap-4 text-xs">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   Sparkles,
   MessageCircle,
@@ -38,6 +38,21 @@ const QUESTION_PRICING: Record<1 | 2 | 3, number> = {
 
 export const LeadCaptureSection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'kundli' | 'ask_question'>('kundli')
+
+  // Automatically activate the correct tab based on anchor hash
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash
+      if (hash === '#kundli-request' || hash === '#kundli-form' || hash === '#free-kundli') {
+        setActiveTab('kundli')
+      } else if (hash === '#ask-question') {
+        setActiveTab('ask_question')
+      }
+    }
+    handleHash()
+    window.addEventListener('hashchange', handleHash)
+    return () => window.removeEventListener('hashchange', handleHash)
+  }, [])
 
   // Honeypot field for bot prevention (must remain empty)
   const [websiteHoneypot, setWebsiteHoneypot] = useState('')
@@ -355,10 +370,12 @@ export const LeadCaptureSection: React.FC = () => {
   }
 
   return (
-    <section id="free-kundli" className="scroll-mt-24 py-8 sm:py-14 bg-mist/40 border-b border-secondary/15">
-      <div id="kundli-request" className="-mt-24 pt-24" aria-hidden="true" />
+    <section id="free-kundli" className="py-8 sm:py-14 bg-mist/40 border-b border-secondary/15">
       <Container size="md">
-        <div className="bg-white rounded-3xl border border-secondary/25 shadow-xl overflow-hidden">
+        <div
+          id="kundli-request"
+          className="scroll-mt-24 sm:scroll-mt-28 bg-white rounded-3xl border border-secondary/25 shadow-xl overflow-hidden"
+        >
           {/* Card Header with Spiritual Accent Pill */}
           <div className="bg-gradient-to-r from-primary via-[#3B2A70] to-primary p-6 sm:p-8 text-ivory text-center relative overflow-hidden">
             {/* Subtle radial glow */}
@@ -437,7 +454,7 @@ export const LeadCaptureSection: React.FC = () => {
           {/* TAB 1: KUNDLI REQUEST (₹499) */}
           {/* ============================================================== */}
           {activeTab === 'kundli' && (
-            <div className="p-6 sm:p-8">
+            <div id="kundli-form" className="p-6 sm:p-8 scroll-mt-24 sm:scroll-mt-28">
               {fkSubmitted ? (
                 /* Success State */
                 <div className="py-8 sm:py-12 text-center space-y-4 animate-in fade-in">

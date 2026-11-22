@@ -1448,7 +1448,7 @@ export const AdminSiteSettings: React.FC = () => {
                 maxLength={80}
                 value={metaTitle}
                 onChange={(e) => setMetaTitle(e.target.value)}
-                placeholder="YugSkills Learning Institute | Astrology, Numerology & Tarot"
+                placeholder="Yug Skill Institute | Astrology, Numerology & Tarot"
                 className="w-full px-3.5 py-2.5 text-sm rounded-xl border border-[#5B3E96]/20 bg-[#FBF7EE]/40 focus:outline-none focus:ring-2 focus:ring-[#5B3E96]/40"
               />
             </div>
@@ -1480,7 +1480,7 @@ export const AdminSiteSettings: React.FC = () => {
                 https://yugoccult.com
               </div>
               <div className="text-base font-medium text-[#2E2A5C] truncate hover:underline cursor-pointer">
-                {metaTitle || 'YugSkills Learning Institute | Astrology, Numerology & Tarot'}
+                {metaTitle || 'Yug Skill Institute | Astrology, Numerology & Tarot'}
               </div>
               <div className="text-xs text-[#2B2A3D]/70 line-clamp-2 leading-relaxed">
                 {metaDescription ||

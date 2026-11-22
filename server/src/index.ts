@@ -115,7 +115,7 @@ app.use('/api/payments', paymentsRouter)
 // Root Welcome Route
 app.get('/', (_req: Request, res: Response) => {
   res.status(200).json({
-    message: 'YugSkills Learning Institute API is running.',
+    message: 'Yug Skill Institute API is running.',
     health: '/api/health',
   })
 })
@@ -139,7 +139,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, HOST, () => {
-    console.log(`[Server] YugSkills Learning Institute API running on http://${HOST}:${PORT}`)
+    console.log(`[Server] Yug Skill Institute API running on http://${HOST}:${PORT}`)
   })
 }
 

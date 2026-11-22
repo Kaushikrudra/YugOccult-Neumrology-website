@@ -529,6 +529,37 @@ publicRouter.get('/consultation', async (_req: Request, res: Response) => {
 })
 
 // -----------------------------------------------------------------------------
+// GET /api/consultation/booked-slots?date=YYYY-MM-DD
+// Returns list of already-booked and confirmed slots for a given date
+// -----------------------------------------------------------------------------
+publicRouter.get('/consultation/booked-slots', async (req: Request, res: Response) => {
+  const { date } = req.query
+  if (!date || typeof date !== 'string') {
+    res.status(200).json({ bookedSlots: [] })
+    return
+  }
+
+  try {
+    const { rows } = await pool.query<{ preferred_slot: string }>(
+      `SELECT cb.preferred_slot
+       FROM consultation_bookings cb
+       JOIN orders o ON cb.order_id = o.id
+       WHERE cb.preferred_date = $1
+         AND o.status = 'paid'
+         AND cb.status NOT IN ('cancelled');`,
+      [date]
+    )
+
+    res.status(200).json({
+      bookedSlots: rows.map((r) => r.preferred_slot),
+    })
+  } catch (err) {
+    console.error('[Public:BookedSlots] Error fetching booked slots:', err)
+    res.status(200).json({ bookedSlots: [] })
+  }
+})
+
+// -----------------------------------------------------------------------------
 // GET /api/site-settings
 // Returns public site settings (contact details, social links, stats, about, hero, meta)
 // -----------------------------------------------------------------------------

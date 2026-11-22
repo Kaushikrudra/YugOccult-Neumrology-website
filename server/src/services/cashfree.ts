@@ -67,7 +67,7 @@ export async function createCashfreeOrder(
     customer_details: {
       customer_id: params.customerId,
       customer_name: params.customerName || 'Seeker',
-      customer_email: params.customerEmail || 'support@yugskills.com',
+      customer_email: params.customerEmail || 'support@yugskill.com',
       customer_phone: cleanPhone,
     },
     order_meta: {

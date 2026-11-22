@@ -18,7 +18,7 @@
         font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         font-size: 11.5px;
         font-weight: 800;
-        letter-spacing: 0.25em;
+        letter-spacing: 0.46em;
         fill: #5B3E96;
         stroke: #5B3E96;
         stroke-width: 0.4px;
@@ -57,13 +57,13 @@
     <polygon points="42,69 43.3,70.8 42,72.6 40.7,70.8" fill="#C9A227" />
   </g>
 
-  <!-- Wordmark Line 1: YugSkills -->
+  <!-- Wordmark Line 1: Yug Skill -->
   <text x="102" y="46" class="brand-title">
-    <tspan class="brand-astro">Yug</tspan><tspan class="brand-veda">Skills</tspan>
+    <tspan class="brand-astro">Yug </tspan><tspan class="brand-veda">Skill</tspan>
   </text>
 
-  <!-- Wordmark Line 2: LEARNING INSTITUTE (Bold) -->
+  <!-- Wordmark Line 2: INSTITUTE (Bold) -->
   <text x="103" y="68" class="brand-sub">
-    LEARNING INSTITUTE
+    INSTITUTE
   </text>
 </svg>

@@ -261,7 +261,7 @@ export const Reports: React.FC = () => {
               How Your Personalised Report is Prepared
             </h2>
             <p className="text-xs sm:text-sm text-ink/75 mt-2">
-              Unlike generic computer-generated printouts, every report at YugSkills Learning Institute is crafted with individualized precision.
+              Unlike generic computer-generated printouts, every report at Yug Skill Institute is crafted with individualized precision.
             </p>
           </div>
 

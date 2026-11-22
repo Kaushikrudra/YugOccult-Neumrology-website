@@ -366,7 +366,7 @@ const ConsultationOrderSchema = z.object({
     maxDate.setDate(maxDate.getDate() + 60)
     return date > today && date <= maxDate
   }, 'Preferred date must be within the next 60 days'),
-  preferred_slot: z.enum(['Morning', 'Afternoon', 'Evening']),
+  preferred_slot: z.string().trim().min(1, 'Preferred slot is required').max(100),
   birth_date: z.string().optional().nullable(),
   birth_time: z.string().optional().nullable(),
   birth_time_unknown: z.boolean().optional().default(false),

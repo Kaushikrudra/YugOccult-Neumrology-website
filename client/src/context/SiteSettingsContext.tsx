@@ -83,7 +83,7 @@ const defaultSettings: SiteSettings = {
   hero_headline: "Illuminate Your Soul's Path with Sacred Vedic Guidance",
   hero_subtitle:
     'Experience non-fear-based authentic horoscope readings and clinical numerological alignment. Discover clarity for your career, relationships, and spiritual dharma.',
-  meta_title: 'YugSkills Learning Institute | Astrology, Numerology & Tarot',
+  meta_title: 'Yug Skill Institute | Astrology, Numerology & Tarot',
   meta_description:
     'Empowering your journey with authentic Vedic astrology readings, numerology blueprints, and certified spiritual courses in Astrology, Numerology & Tarot.',
   why_choose_points: [],

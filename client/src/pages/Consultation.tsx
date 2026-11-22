@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import {
   CheckCircle,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Sun,
+  Moon,
   Award,
   Sparkles,
   ShieldCheck,
@@ -25,6 +30,21 @@ import { useSiteSettings } from '../context/SiteSettingsContext'
 import { useAuth } from '../context/AuthContext'
 import { api } from '../lib/api'
 import { startCheckout } from '../lib/cashfree'
+
+const AFTERNOON_SLOTS = [
+  '12:00 PM - 01:00 PM',
+  '01:00 PM - 02:00 PM',
+  '02:00 PM - 03:00 PM',
+  '03:00 PM - 04:00 PM',
+  '04:00 PM - 05:00 PM',
+] as const
+
+const EVENING_SLOTS = [
+  '08:00 PM - 09:00 PM',
+  '09:00 PM - 10:00 PM',
+] as const
+
+const ALL_SLOTS = [...AFTERNOON_SLOTS, ...EVENING_SLOTS]
 
 export const Consultation: React.FC = () => {
   // Master consultation settings from API (with consultationData fallback)
@@ -80,30 +100,52 @@ export const Consultation: React.FC = () => {
     }
   }, [])
 
-  // Auto-scroll to #kundli-request, #free-kundli, or #book-consultation if navigated via anchor
+  const location = useLocation()
+
+  // Auto-scroll directly to #kundli-request, #kundli-form, or #book-consultation
   useEffect(() => {
-    if (
-      window.location.hash === '#free-kundli' ||
-      window.location.hash === '#kundli-request' ||
-      window.location.hash === '#book-consultation'
-    ) {
-      const timer = setTimeout(() => {
-        const hash = window.location.hash.substring(1)
-        const el =
-          document.getElementById(hash) ||
-          (hash === 'free-kundli' ? document.getElementById('kundli-request') : null)
+    const validHashes = ['#free-kundli', '#kundli-request', '#kundli-form', '#book-consultation']
+    if (validHashes.includes(location.hash)) {
+      const targetHash = location.hash.substring(1)
+      const targetId =
+        targetHash === 'free-kundli' || targetHash === 'kundli-form'
+          ? 'kundli-request'
+          : targetHash
+
+      const doScroll = () => {
+        const el = document.getElementById(targetId) || document.getElementById('kundli-request')
         if (el) {
-          el.scrollIntoView({ behavior: 'smooth' })
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' })
         }
-      }, 100)
-      return () => clearTimeout(timer)
+      }
+
+      // Initial scroll and secondary scroll to compensate for dynamic layout shifts
+      const t1 = setTimeout(doScroll, 150)
+      const t2 = setTimeout(doScroll, 500)
+      return () => {
+        clearTimeout(t1)
+        clearTimeout(t2)
+      }
     }
-  }, [])
+  }, [location.hash, loading])
 
   const { user } = useAuth()
 
   // Accordion state
   const [openFaqId, setOpenFaqId] = useState<string | null>('faq-1')
+
+  // Tomorrow as minimum date, 60 days ahead as maximum
+  const tomorrowStr = (() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    return d.toISOString().split('T')[0]
+  })()
+
+  const maxDateStr = (() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 60)
+    return d.toISOString().split('T')[0]
+  })()
 
   // Booking Modal State
   const [showBookingModal, setShowBookingModal] = useState(false)
@@ -111,8 +153,63 @@ export const Consultation: React.FC = () => {
   const [bookName, setBookName] = useState('')
   const [bookEmail, setBookEmail] = useState('')
   const [bookPhone, setBookPhone] = useState('')
-  const [bookDate, setBookDate] = useState('')
-  const [bookSlot, setBookSlot] = useState<'Morning' | 'Afternoon' | 'Evening'>('Morning')
+  const [bookDate, setBookDate] = useState(tomorrowStr)
+  const [bookSlot, setBookSlot] = useState<string>('12:00 PM - 01:00 PM')
+  const [bookedSlots, setBookedSlots] = useState<string[]>([])
+  const [loadingBookedSlots, setLoadingBookedSlots] = useState(false)
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 1)
+    return new Date(d.getFullYear(), d.getMonth(), 1)
+  })
+
+  // Fetch booked slots whenever bookDate changes
+  useEffect(() => {
+    if (!bookDate) {
+      setBookedSlots([])
+      return
+    }
+    let isMounted = true
+    setLoadingBookedSlots(true)
+    api
+      .get<{ bookedSlots: string[] }>(`/api/consultation/booked-slots?date=${bookDate}`)
+      .then((res) => {
+        if (isMounted && res?.bookedSlots) {
+          setBookedSlots(res.bookedSlots)
+          if (res.bookedSlots.includes(bookSlot)) {
+            const firstAvailable = ALL_SLOTS.find((s) => !res.bookedSlots.includes(s))
+            if (firstAvailable) setBookSlot(firstAvailable)
+          }
+        }
+      })
+      .catch(() => {
+        if (isMounted) setBookedSlots([])
+      })
+      .finally(() => {
+        if (isMounted) setLoadingBookedSlots(false)
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [bookDate])
+
+  const handlePrevMonth = () => {
+    setCalendarMonth((prev) => {
+      const now = new Date()
+      const minMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const prevM = new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
+      return prevM < minMonth ? prev : prevM
+    })
+  }
+
+  const handleNextMonth = () => {
+    setCalendarMonth((prev) => {
+      const maxM = new Date(maxDateStr)
+      const maxMonth = new Date(maxM.getFullYear(), maxM.getMonth(), 1)
+      const nextM = new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
+      return nextM > maxMonth ? prev : nextM
+    })
+  }
   const [bookBirthDate, setBookBirthDate] = useState('')
   const [bookBirthTime, setBookBirthTime] = useState('')
   const [bookBirthTimeUnknown, setBookBirthTimeUnknown] = useState(false)
@@ -208,25 +305,12 @@ export const Consultation: React.FC = () => {
     }
   }
 
-  // Tomorrow as minimum date, 60 days ahead as maximum
-  const tomorrowStr = (() => {
-    const d = new Date()
-    d.setDate(d.getDate() + 1)
-    return d.toISOString().split('T')[0]
-  })()
-
-  const maxDateStr = (() => {
-    const d = new Date()
-    d.setDate(d.getDate() + 60)
-    return d.toISOString().split('T')[0]
-  })()
-
   return (
     <div className="space-y-12 sm:space-y-20 pb-12 sm:pb-24 pt-4 sm:pt-8">
       {/* Consultation Booking Modal */}
       {showBookingModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-[#FBF7EE] w-full max-w-lg rounded-2xl shadow-2xl border border-secondary/20 overflow-hidden text-[#2B2A3D] max-h-[92vh] flex flex-col">
+          <div className="bg-[#FBF7EE] w-full max-w-xl rounded-2xl shadow-2xl border border-secondary/20 overflow-hidden text-[#2B2A3D] max-h-[92vh] flex flex-col">
             {/* Header */}
             <div className="bg-gradient-to-r from-[#1E1B4B] to-[#2E2A5C] text-white p-5 sm:p-6 relative shrink-0">
               <button
@@ -315,49 +399,255 @@ export const Consultation: React.FC = () => {
                 </div>
               </div>
 
-              {/* Date & Slot Selection */}
-              <div className="pt-2 border-t border-secondary/15 space-y-3">
-                <p className="text-xs uppercase tracking-wider font-bold text-[#5B3E96]">
-                  Schedule Preferences
-                </p>
+              {/* Date & Slot Selection (Interactive Calendar & 1-Hour Time Slots) */}
+              <div className="pt-3 border-t border-secondary/15 space-y-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs uppercase tracking-wider font-bold text-[#5B3E96] flex items-center gap-1.5">
+                    <CalendarIcon className="w-4 h-4 text-[#C9A227]" />
+                    <span>Choose Consultation Date &amp; Slot</span>
+                  </p>
+                  <span className="text-[11px] text-[#2B2A3D]/70 font-semibold bg-[#EFEAF8] text-[#5B3E96] px-2.5 py-0.5 rounded-full">
+                    1 Hour Session
+                  </span>
+                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div>
-                    <label className="block text-xs font-medium text-[#2B2A3D] mb-1 flex items-center gap-1.5">
-                      <CalendarIcon className="w-3.5 h-3.5 text-secondary" />
-                      Preferred Date <span className="text-[#C9A227]">*</span>
-                    </label>
-                    <input
-                      type="date"
-                      required
-                      min={tomorrowStr}
-                      max={maxDateStr}
-                      value={bookDate}
-                      onChange={(e) => setBookDate(e.target.value)}
-                      className="w-full px-3 py-2 text-xs sm:text-sm rounded-xl border border-secondary/25 bg-white text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-secondary/40"
-                    />
+                {/* Interactive Visual Calendar */}
+                <div className="bg-white rounded-2xl p-4 border border-secondary/20 shadow-xs">
+                  {/* Calendar Header with Month Navigation */}
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-secondary/10">
+                    <span className="font-heading font-bold text-sm sm:text-base text-[#2E2A5C]">
+                      {calendarMonth.toLocaleDateString('en-IN', {
+                        month: 'long',
+                        year: 'numeric',
+                      })}
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={handlePrevMonth}
+                        disabled={
+                          calendarMonth.getFullYear() === new Date().getFullYear() &&
+                          calendarMonth.getMonth() <= new Date().getMonth()
+                        }
+                        className="p-1.5 rounded-lg border border-secondary/20 hover:bg-mist text-[#2E2A5C] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Previous month"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleNextMonth}
+                        disabled={(() => {
+                          const maxM = new Date(maxDateStr)
+                          return (
+                            calendarMonth.getFullYear() === maxM.getFullYear() &&
+                            calendarMonth.getMonth() >= maxM.getMonth()
+                          )
+                        })()}
+                        className="p-1.5 rounded-lg border border-secondary/20 hover:bg-mist text-[#2E2A5C] disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                        aria-label="Next month"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-[#2B2A3D] mb-1 flex items-center gap-1.5">
-                      <Clock className="w-3.5 h-3.5 text-secondary" />
-                      Preferred Slot <span className="text-[#C9A227]">*</span>
-                    </label>
-                    <div className="grid grid-cols-3 gap-1.5">
-                      {(['Morning', 'Afternoon', 'Evening'] as const).map((slot) => (
+                  {/* Weekday Names */}
+                  <div className="grid grid-cols-7 gap-1 text-center mb-1.5 text-[11px] font-semibold text-[#5B3E96]">
+                    <span>Su</span>
+                    <span>Mo</span>
+                    <span>Tu</span>
+                    <span>We</span>
+                    <span>Th</span>
+                    <span>Fr</span>
+                    <span>Sa</span>
+                  </div>
+
+                  {/* Calendar Days Grid */}
+                  <div className="grid grid-cols-7 gap-1 text-center">
+                    {/* Blank offset days */}
+                    {Array.from({
+                      length: new Date(
+                        calendarMonth.getFullYear(),
+                        calendarMonth.getMonth(),
+                        1
+                      ).getDay(),
+                    }).map((_, idx) => (
+                      <div key={`blank-${idx}`} className="h-8" />
+                    ))}
+
+                    {/* Day numbers */}
+                    {Array.from({
+                      length: new Date(
+                        calendarMonth.getFullYear(),
+                        calendarMonth.getMonth() + 1,
+                        0
+                      ).getDate(),
+                    }).map((_, idx) => {
+                      const dayNum = idx + 1
+                      const dateObj = new Date(
+                        calendarMonth.getFullYear(),
+                        calendarMonth.getMonth(),
+                        dayNum
+                      )
+                      const isPast = dateObj < new Date(new Date().setHours(0, 0, 0, 0) + 86400000)
+                      const maxDateLimit = new Date()
+                      maxDateLimit.setDate(maxDateLimit.getDate() + 60)
+                      const isTooFar = dateObj > maxDateLimit
+                      const isSelectable = !isPast && !isTooFar
+
+                      const yyyy = calendarMonth.getFullYear()
+                      const mm = String(calendarMonth.getMonth() + 1).padStart(2, '0')
+                      const dd = String(dayNum).padStart(2, '0')
+                      const dateStr = `${yyyy}-${mm}-${dd}`
+                      const isSelected = bookDate === dateStr
+
+                      return (
                         <button
-                          key={slot}
+                          key={`day-${dayNum}`}
                           type="button"
-                          onClick={() => setBookSlot(slot)}
-                          className={`py-2 px-1 text-[11px] rounded-lg font-semibold transition-all border text-center ${
-                            bookSlot === slot
-                              ? 'bg-[#5B3E96] text-[#FBF7EE] border-[#5B3E96]'
-                              : 'bg-white text-[#2B2A3D] border-secondary/20 hover:bg-mist'
+                          disabled={!isSelectable}
+                          onClick={() => setBookDate(dateStr)}
+                          className={`h-8 sm:h-8.5 rounded-xl text-xs font-semibold flex items-center justify-center transition-all ${
+                            isSelected
+                              ? 'bg-[#5B3E96] text-[#FBF7EE] shadow-sm ring-2 ring-[#C9A227] font-bold scale-105'
+                              : !isSelectable
+                              ? 'text-[#2B2A3D]/25 bg-transparent cursor-not-allowed'
+                              : 'bg-white text-[#2E2A5C] hover:bg-[#EFEAF8] border border-secondary/15 hover:border-[#5B3E96]/30'
                           }`}
                         >
-                          {slot}
+                          {dayNum}
                         </button>
-                      ))}
+                      )
+                    })}
+                  </div>
+
+                  {/* Selected Date indicator */}
+                  <div className="mt-3 pt-2.5 border-t border-secondary/10 flex items-center justify-between text-xs">
+                    <span className="text-[#2B2A3D]/70 font-medium">Selected Date:</span>
+                    <span className="font-bold text-[#5B3E96] flex items-center gap-1">
+                      <CheckCircle className="w-3.5 h-3.5 text-[#C9A227]" />
+                      {bookDate
+                        ? new Date(bookDate).toLocaleDateString('en-IN', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })
+                        : 'Please choose a date'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 1-Hour Time Slots */}
+                <div className="space-y-3">
+                  {/* Afternoon Slots (12-5 PM) */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2E2A5C] mb-2 flex items-center gap-1.5">
+                      <Sun className="w-3.5 h-3.5 text-[#F08A24]" />
+                      <span>Afternoon Slots (12:00 PM – 05:00 PM)</span>
+                      <span className="text-[10px] text-[#2B2A3D]/60 font-normal">
+                        • 1 hr each
+                      </span>
+                      {loadingBookedSlots && (
+                        <Loader2 className="w-3 h-3 animate-spin text-[#5B3E96] inline ml-1" />
+                      )}
+                    </label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {AFTERNOON_SLOTS.map((slot) => {
+                        const isBooked = bookedSlots.includes(slot)
+                        const isSelected = bookSlot === slot
+                        return (
+                          <button
+                            key={slot}
+                            type="button"
+                            disabled={isBooked}
+                            onClick={() => setBookSlot(slot)}
+                            className={`py-2 px-3 rounded-xl text-xs font-semibold transition-all border flex items-center justify-between gap-2 text-left ${
+                              isSelected
+                                ? 'bg-[#5B3E96] text-[#FBF7EE] border-[#5B3E96] shadow-sm ring-1 ring-[#C9A227]'
+                                : isBooked
+                                ? 'bg-mist/60 text-[#2B2A3D]/40 border-secondary/10 cursor-not-allowed'
+                                : 'bg-white text-[#2E2A5C] border-secondary/20 hover:border-[#5B3E96]/40 hover:bg-[#EFEAF8]/40'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Clock
+                                className={`w-3.5 h-3.5 ${
+                                  isSelected ? 'text-[#C9A227]' : 'text-secondary'
+                                }`}
+                              />
+                              <span>{slot}</span>
+                            </span>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                                isBooked
+                                  ? 'bg-[#2E2A5C]/10 text-[#2E2A5C]'
+                                  : isSelected
+                                  ? 'bg-white/20 text-[#FBF7EE]'
+                                  : 'bg-[#EFEAF8] text-[#5B3E96]'
+                              }`}
+                            >
+                              {isBooked ? 'Booked' : '1 Hr'}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Evening Slots (8-10 PM) */}
+                  <div>
+                    <label className="block text-xs font-semibold text-[#2E2A5C] mb-2 flex items-center gap-1.5">
+                      <Moon className="w-3.5 h-3.5 text-[#5B3E96]" />
+                      <span>Evening Slots (08:00 PM – 10:00 PM)</span>
+                      <span className="text-[10px] text-[#2B2A3D]/60 font-normal">
+                        • 1 hr each
+                      </span>
+                    </label>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {EVENING_SLOTS.map((slot) => {
+                        const isBooked = bookedSlots.includes(slot)
+                        const isSelected = bookSlot === slot
+                        return (
+                          <button
+                            key={slot}
+                            type="button"
+                            disabled={isBooked}
+                            onClick={() => setBookSlot(slot)}
+                            className={`py-2 px-3 rounded-xl text-xs font-semibold transition-all border flex items-center justify-between gap-2 text-left ${
+                              isSelected
+                                ? 'bg-[#5B3E96] text-[#FBF7EE] border-[#5B3E96] shadow-sm ring-1 ring-[#C9A227]'
+                                : isBooked
+                                ? 'bg-mist/60 text-[#2B2A3D]/40 border-secondary/10 cursor-not-allowed'
+                                : 'bg-white text-[#2E2A5C] border-secondary/20 hover:border-[#5B3E96]/40 hover:bg-[#EFEAF8]/40'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Clock
+                                className={`w-3.5 h-3.5 ${
+                                  isSelected ? 'text-[#C9A227]' : 'text-secondary'
+                                }`}
+                              />
+                              <span>{slot}</span>
+                            </span>
+                            <span
+                              className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                                isBooked
+                                  ? 'bg-[#2E2A5C]/10 text-[#2E2A5C]'
+                                  : isSelected
+                                  ? 'bg-white/20 text-[#FBF7EE]'
+                                  : 'bg-[#EFEAF8] text-[#5B3E96]'
+                              }`}
+                            >
+                              {isBooked ? 'Booked' : '1 Hr'}
+                            </span>
+                          </button>
+                        )
+                      })}
                     </div>
                   </div>
                 </div>
