@@ -9,7 +9,7 @@ export interface PageMetaOptions {
   ogType?: string
 }
 
-const DEFAULT_BRAND = 'YugOccult Learning Academy'
+const DEFAULT_BRAND = 'Yug Skill Institute'
 const DEFAULT_DESCRIPTION =
   'Empowering your journey with authentic Vedic astrology readings, numerology blueprints, and certified spiritual courses in Astrology, Numerology & Tarot.'
 
@@ -39,7 +39,7 @@ export function usePageMeta(options: PageMetaOptions = {}) {
   const { settings } = useSiteSettings()
 
   useEffect(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://yugoccult.in'
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://yugskillinstitute.com'
     const brand = DEFAULT_BRAND
 
     // 1. Title Resolution
@@ -69,14 +69,16 @@ export function usePageMeta(options: PageMetaOptions = {}) {
     setCanonicalTag(canonicalUrl)
 
     // 4. Open Graph Tags
+    setMetaTag('property', 'og:site_name', 'Yug Skill Institute')
     setMetaTag('property', 'og:title', resolvedTitle)
     setMetaTag('property', 'og:description', resolvedDescription)
     setMetaTag('property', 'og:url', canonicalUrl)
     setMetaTag('property', 'og:type', options.ogType || 'website')
+    setMetaTag('property', 'og:image', `${origin}/images/anushka-about.png`)
 
     // 5. Robots tag handling
-    const allowIndexing = import.meta.env.VITE_ALLOW_INDEXING === 'true'
-    let robotsContent = 'noindex, nofollow'
+    const allowIndexing = import.meta.env.VITE_ALLOW_INDEXING !== 'false'
+    let robotsContent = 'index, follow'
     if (options.noindex) {
       robotsContent = 'noindex, nofollow'
     } else if (allowIndexing) {
