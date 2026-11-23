@@ -156,7 +156,7 @@ paymentsRouter.post(
         expires_at: string | null
       }>(
         `SELECT id, status, expires_at FROM enrollments WHERE user_id = $1 AND course_id = $2 AND status = 'active' LIMIT 1;`,
-        [userId, courseId]
+        [userId, course.id]
       )
 
       let isRenewal = false
@@ -314,7 +314,7 @@ paymentsRouter.post(
       // 2. Check if already purchased
       const purchaseRes = await pool.query(
         `SELECT id FROM ebook_purchases WHERE user_id = $1 AND ebook_id = $2 LIMIT 1;`,
-        [userId, ebookId]
+        [userId, ebook.id]
       )
 
       if (purchaseRes.rows.length > 0) {
