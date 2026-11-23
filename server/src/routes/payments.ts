@@ -230,7 +230,7 @@ paymentsRouter.post(
       // 5. Initiate Cashfree Order
       const cfResult = await createCashfreeOrder({
         orderId: cashfreeOrderId,
-        orderAmount: course.price,
+        orderAmount: Number(course.price),
         customerId: userId,
         customerName,
         customerEmail,

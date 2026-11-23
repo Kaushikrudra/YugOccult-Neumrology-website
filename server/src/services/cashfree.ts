@@ -60,9 +60,11 @@ export async function createCashfreeOrder(
     throw new Error('Customer phone number must contain at least 10 valid digits.')
   }
 
+  const numericAmount = parseFloat(String(params.orderAmount)) || 0
+
   const createOrderRequest: any = {
     order_id: params.orderId,
-    order_amount: Number(params.orderAmount.toFixed(2)),
+    order_amount: Number(numericAmount.toFixed(2)),
     order_currency: params.orderCurrency || 'INR',
     customer_details: {
       customer_id: params.customerId,
