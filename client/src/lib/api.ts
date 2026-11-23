@@ -59,10 +59,16 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
   }
 
   if (!response.ok) {
-    const errorMessage =
-      responseData?.error ||
-      responseData?.message ||
-      `Request failed with status ${response.status}`
+    let errorMessage = responseData?.error || responseData?.message
+    if (responseData?.details && typeof responseData.details === 'object') {
+      const flatDetails = Object.values(responseData.details).flat()
+      if (flatDetails.length > 0 && typeof flatDetails[0] === 'string') {
+        errorMessage = flatDetails[0]
+      }
+    }
+    if (!errorMessage) {
+      errorMessage = `Request failed with status ${response.status}`
+    }
     throw new ApiError(response.status, errorMessage, responseData)
   }
 

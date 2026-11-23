@@ -51,11 +51,53 @@ function generateCashfreeOrderId(): string {
   return `YO_${timestamp}_${randomPart}`
 }
 
+function formatZodError(parseResult: { error: z.ZodError }): { error: string; details: Record<string, string[]> } {
+  const fieldErrors = parseResult.error.flatten().fieldErrors as Record<string, string[]>
+  const allMessages = Object.values(fieldErrors).flat()
+  const error = allMessages[0] || 'Validation error'
+  return { error, details: fieldErrors }
+}
+
+const isUuid = (str: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+
+const MOCK_COURSE_ID_TO_SLUG: Record<string, string> = {
+  'course-pkg-1': 'diwali-special-bundle-course',
+  'course-pkg-2': 'occult-master-package-bundle-courses-3-month-program',
+  'course-pkg-3': 'occult-master-package-bundle-courses',
+  'course-pkg-4': 'tarot-course-package',
+  'course-tarot-1': 'osho-zen-tarot-reading-course',
+  'course-tarot-2': 'angel-oracle-card-reading-certification-course',
+  'course-tarot-3': 'tarot-card-reading-certification-course',
+  'course-astro-1': 'balance-the-9-planets-with-food-course',
+  'course-astro-2': 'lal-kitab-course',
+  'course-astro-3': 'mohini-vidhya-special-course',
+  'course-num-1': 'numerology-foundation-course-live',
+  'course-num-2': 'name-and-mobile-numerology-program',
+  'course-num-3': 'prediction-through-time-numerology',
+  'course-num-4': 'vedic-numerology-best-course',
+  'course-vastu-1': 'vastu-shastra-course-with-practical-remedies',
+  'course-vastu-2': 'vastu-course',
+  'course-rem-3': 'law-of-attraction-with-occult-remedies',
+  'course-rem-4': '30-days-gratitude-practical-course',
+  'course-heal-1': 'reiki-healing-program-level-1-and-2',
+  'course-heal-2': 'colour-therapy-expert-course',
+  'course-heal-3': 'cord-cutting-special-session',
+  'course-rem-1': 'dhanvarsha-laxmi-potli',
+  'course-rem-2': 'diwali-special-remedies-advanced-level',
+  'course-rem-5': 'durga-prashnawali-course',
+  'course-rem-6': 'gayatri-mantra-sadhana',
+  'course-rem-7': 'italian-switchwords-mastery-course',
+  'course-rem-8': 'vedic-switchwords-mastery-course',
+  'course-coach-1': 'online-coaching-business-program',
+  'course-astro-4': 'vedic-astrology-course-basic-to-advanced',
+  'course-num-5': 'loshu-grid-numerology-basic-to-advanced',
+}
+
 // -----------------------------------------------------------------------------
 // POST /api/payments/course-order (requireAuth)
 // -----------------------------------------------------------------------------
 const CourseOrderSchema = z.object({
-  courseId: z.string().uuid('Invalid course ID'),
+  courseId: z.string().trim().min(1, 'Course ID is required'),
   phone: z.string().trim().optional(),
 })
 
@@ -71,10 +113,8 @@ paymentsRouter.post(
 
     const parseResult = CourseOrderSchema.safeParse(req.body)
     if (!parseResult.success) {
-      res.status(400).json({
-        error: 'Validation error',
-        details: parseResult.error.flatten().fieldErrors,
-      })
+      const { error, details } = formatZodError(parseResult)
+      res.status(400).json({ error, details })
       return
     }
 
@@ -82,13 +122,21 @@ paymentsRouter.post(
     const userId = req.user!.id
 
     try {
-      // 1. Fetch course details & ensure it is visible
-      const courseRes = await pool.query<{
-        id: string
-        title: string
-        price: number
-        is_visible: boolean
-      }>('SELECT id, title, price, is_visible FROM courses WHERE id = $1 LIMIT 1;', [courseId])
+      // 1. Fetch course details & ensure it is visible (supports UUID, slug, or mock fallback ID)
+      const resolvedTarget = MOCK_COURSE_ID_TO_SLUG[courseId] || courseId
+      const courseRes = isUuid(resolvedTarget)
+        ? await pool.query<{
+            id: string
+            title: string
+            price: number
+            is_visible: boolean
+          }>('SELECT id, title, price, is_visible FROM courses WHERE id = $1 LIMIT 1;', [resolvedTarget])
+        : await pool.query<{
+            id: string
+            title: string
+            price: number
+            is_visible: boolean
+          }>('SELECT id, title, price, is_visible FROM courses WHERE slug = $1 LIMIT 1;', [resolvedTarget])
 
       if (courseRes.rows.length === 0 || !courseRes.rows[0].is_visible) {
         res.status(404).json({ error: 'Course not found or currently unavailable' })
@@ -212,7 +260,7 @@ paymentsRouter.post(
 // POST /api/payments/ebook-order (requireAuth)
 // -----------------------------------------------------------------------------
 const EbookOrderSchema = z.object({
-  ebookId: z.string().uuid('Invalid ebook ID'),
+  ebookId: z.string().trim().min(1, 'Ebook ID is required'),
   phone: z.string().trim().optional(),
 })
 
@@ -228,10 +276,8 @@ paymentsRouter.post(
 
     const parseResult = EbookOrderSchema.safeParse(req.body)
     if (!parseResult.success) {
-      res.status(400).json({
-        error: 'Validation error',
-        details: parseResult.error.flatten().fieldErrors,
-      })
+      const { error, details } = formatZodError(parseResult)
+      res.status(400).json({ error, details })
       return
     }
 
@@ -240,12 +286,19 @@ paymentsRouter.post(
 
     try {
       // 1. Fetch ebook
-      const ebookRes = await pool.query<{
-        id: string
-        title: string
-        price: number
-        is_visible: boolean
-      }>('SELECT id, title, price, is_visible FROM ebooks WHERE id = $1 LIMIT 1;', [ebookId])
+      const ebookRes = isUuid(ebookId)
+        ? await pool.query<{
+            id: string
+            title: string
+            price: number
+            is_visible: boolean
+          }>('SELECT id, title, price, is_visible FROM ebooks WHERE id = $1 LIMIT 1;', [ebookId])
+        : await pool.query<{
+            id: string
+            title: string
+            price: number
+            is_visible: boolean
+          }>('SELECT id, title, price, is_visible FROM ebooks WHERE slug = $1 LIMIT 1;', [ebookId])
 
       if (ebookRes.rows.length === 0 || !ebookRes.rows[0].is_visible) {
         res.status(404).json({ error: 'Ebook not found or currently unavailable' })
@@ -364,7 +417,7 @@ const ConsultationOrderSchema = z.object({
     today.setHours(0, 0, 0, 0)
     const maxDate = new Date()
     maxDate.setDate(maxDate.getDate() + 60)
-    return date > today && date <= maxDate
+    return date >= today && date <= maxDate
   }, 'Preferred date must be within the next 60 days'),
   preferred_slot: z.string().trim().min(1, 'Preferred slot is required').max(100),
   birth_date: z.string().optional().nullable(),
@@ -390,10 +443,8 @@ paymentsRouter.post(
 
     const parseResult = ConsultationOrderSchema.safeParse(req.body)
     if (!parseResult.success) {
-      res.status(400).json({
-        error: 'Validation error',
-        details: parseResult.error.flatten().fieldErrors,
-      })
+      const { error, details } = formatZodError(parseResult)
+      res.status(400).json({ error, details })
       return
     }
 
@@ -515,7 +566,7 @@ paymentsRouter.post(
 // POST /api/payments/report-order (auth optional)
 // -----------------------------------------------------------------------------
 const ReportOrderSchema = z.object({
-  reportId: z.string().uuid('Invalid report ID'),
+  reportId: z.string().trim().min(1, 'Report ID is required'),
   name: z.string().trim().min(2, 'Name must be at least 2 characters').max(100),
   email: z.string().trim().email('Valid email is required'),
   whatsapp_number: z.string().trim().min(10, 'Valid WhatsApp number is required'),
@@ -543,10 +594,8 @@ paymentsRouter.post(
 
     const parseResult = ReportOrderSchema.safeParse(req.body)
     if (!parseResult.success) {
-      res.status(400).json({
-        error: 'Validation error',
-        details: parseResult.error.flatten().fieldErrors,
-      })
+      const { error, details } = formatZodError(parseResult)
+      res.status(400).json({ error, details })
       return
     }
 
@@ -561,12 +610,19 @@ paymentsRouter.post(
 
     try {
       // 1. Fetch report details
-      const reportRes = await pool.query<{
-        id: string
-        title: string
-        price: number
-        is_visible: boolean
-      }>('SELECT id, title, price, is_visible FROM reports WHERE id = $1 LIMIT 1;', [data.reportId])
+      const reportRes = isUuid(data.reportId)
+        ? await pool.query<{
+            id: string
+            title: string
+            price: number
+            is_visible: boolean
+          }>('SELECT id, title, price, is_visible FROM reports WHERE id = $1 LIMIT 1;', [data.reportId])
+        : await pool.query<{
+            id: string
+            title: string
+            price: number
+            is_visible: boolean
+          }>('SELECT id, title, price, is_visible FROM reports WHERE slug = $1 LIMIT 1;', [data.reportId])
 
       if (reportRes.rows.length === 0 || !reportRes.rows[0].is_visible) {
         res.status(404).json({ error: 'Report not found or currently unavailable' })
@@ -726,7 +782,8 @@ paymentsRouter.post(
 
     const parseResult = KundliOrderSchema.safeParse(req.body)
     if (!parseResult.success) {
-      res.status(400).json({ error: 'Validation error', details: parseResult.error.flatten().fieldErrors })
+      const { error, details } = formatZodError(parseResult)
+      res.status(400).json({ error, details })
       return
     }
 
@@ -881,7 +938,8 @@ paymentsRouter.post(
 
     const parseResult = AskQuestionOrderSchema.safeParse(req.body)
     if (!parseResult.success) {
-      res.status(400).json({ error: 'Validation error', details: parseResult.error.flatten().fieldErrors })
+      const { error, details } = formatZodError(parseResult)
+      res.status(400).json({ error, details })
       return
     }
 
