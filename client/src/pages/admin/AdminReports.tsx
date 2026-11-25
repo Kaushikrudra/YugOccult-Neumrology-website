@@ -1000,10 +1000,10 @@ export const AdminReports: React.FC = () => {
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="url"
+                    type="text"
                     value={formData.cover_image_url}
                     onChange={(e) => setFormData({ ...formData, cover_image_url: e.target.value })}
-                    placeholder="https://... or upload below"
+                    placeholder="/uploads/... or https://..."
                     className="flex-1 px-3 py-2 rounded-xl border border-secondary/25 text-xs sm:text-sm"
                   />
                   <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-secondary/25 text-xs font-semibold text-ink/80 hover:bg-mist cursor-pointer shrink-0">

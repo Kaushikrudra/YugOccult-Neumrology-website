@@ -429,7 +429,7 @@ export const AdminCourses: React.FC = () => {
       }
     } catch (err: any) {
       console.error('[AdminCourses:ImageUpload] Error:', err)
-      alert(err?.message || 'Failed to upload course banner image')
+      setCourseFormError(err?.message || 'Failed to upload course banner image')
     } finally {
       setUploadingImage(false)
       e.target.value = ''
@@ -1406,10 +1406,10 @@ export const AdminCourses: React.FC = () => {
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="url"
+                    type="text"
                     value={courseImageUrl}
                     onChange={(e) => setCourseImageUrl(e.target.value)}
-                    placeholder="https://... or upload banner image below"
+                    placeholder="/uploads/... or https://..."
                     className="flex-1 px-3.5 py-2.5 rounded-xl border border-[#5B3E96]/20 text-xs sm:text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5B3E96]/30"
                   />
                   <label className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-[#5B3E96]/25 bg-white text-xs font-semibold text-[#2E2A5C] hover:bg-mist cursor-pointer shrink-0 shadow-2xs transition-colors">

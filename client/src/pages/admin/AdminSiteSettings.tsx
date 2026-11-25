@@ -297,8 +297,8 @@ export const AdminSiteSettings: React.FC = () => {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.size > 2 * 1024 * 1024) {
-      setErrorMessage('Selected image exceeds the 2MB size limit.')
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorMessage('Selected image exceeds the 10MB size limit.')
       return
     }
 
@@ -1140,7 +1140,7 @@ export const AdminSiteSettings: React.FC = () => {
                     ) : (
                       <Upload className="w-3.5 h-3.5 text-[#C9A227]" />
                     )}
-                    <span>{isUploadingPhoto ? 'Uploading...' : 'Upload Image (Max 2MB)'}</span>
+                    <span>{isUploadingPhoto ? 'Uploading...' : 'Upload Image (Max 10MB)'}</span>
                   </label>
 
                   {aboutPhotoUrl && (

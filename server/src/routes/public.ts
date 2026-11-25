@@ -5,7 +5,7 @@ import { pool } from '../db'
 import { requireAuth } from '../middleware/auth'
 import { grantEnrollment } from '../services/enrollment'
 import { sendAdminPurchaseNotification } from '../services/email'
-import { isStorageConfigured, createSignedDownloadUrl } from '../services/storage'
+import { isStorageConfigured, createSignedDownloadUrl, getLocalFilePath } from '../services/storage'
 import { sendMail } from '../services/mail'
 import {
   buildContactNotificationEmail,
@@ -814,8 +814,10 @@ publicRouter.post(
         }
       }
 
-      if (!isStorageConfigured()) {
-        res.status(501).json({ error: 'Storage not configured' })
+      const localPath = getLocalFilePath(ebook.storage_path)
+
+      if (!localPath && !isStorageConfigured()) {
+        res.status(404).json({ error: 'Ebook file not found on storage' })
         return
       }
 
@@ -828,6 +830,11 @@ publicRouter.post(
         [ebook.id, req.user!.id, clientIp, userAgent]
       )
 
+      if (localPath) {
+        res.status(200).json({ url: `/api/ebooks/${ebook.id}/stream` })
+        return
+      }
+
       // Generate 60-second signed download URL with original filename
       const signedUrl = await createSignedDownloadUrl(ebook.storage_path, 60, {
         download: ebook.file_name,
@@ -838,6 +845,65 @@ publicRouter.post(
     } catch (err: any) {
       console.error('[Public:Ebooks:Download] Error processing download request')
       res.status(500).json({ error: 'Failed to generate download link' })
+    }
+  }
+)
+
+// GET /api/ebooks/:id/stream - stream locally stored ebook PDF for authenticated user
+publicRouter.get(
+  '/ebooks/:id/stream',
+  requireAuth,
+  ebookDownloadLimiter,
+  async (req: Request, res: Response) => {
+    const { id } = req.params
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    if (!id || !uuidRegex.test(id)) {
+      res.status(400).json({ error: 'Invalid ebook ID format' })
+      return
+    }
+
+    try {
+      const { rows } = await pool.query<{
+        id: string
+        storage_path: string
+        file_name: string
+        price: number
+        is_visible: boolean
+      }>(
+        `SELECT id, storage_path, file_name, price, is_visible
+         FROM ebooks
+         WHERE id = $1;`,
+        [id]
+      )
+
+      if (rows.length === 0 || !rows[0].is_visible) {
+        res.status(404).json({ error: 'Ebook not found' })
+        return
+      }
+
+      const ebook = rows[0]
+
+      if (ebook.price > 0) {
+        const purchaseRes = await pool.query(
+          `SELECT id FROM ebook_purchases WHERE ebook_id = $1 AND user_id = $2 LIMIT 1;`,
+          [ebook.id, req.user!.id]
+        )
+        if (purchaseRes.rows.length === 0) {
+          res.status(402).json({ error: 'Purchase required' })
+          return
+        }
+      }
+
+      const localPath = getLocalFilePath(ebook.storage_path)
+      if (localPath) {
+        res.download(localPath, ebook.file_name || 'ebook.pdf')
+        return
+      }
+
+      res.status(404).json({ error: 'File not found on local storage' })
+    } catch (err: any) {
+      console.error('[Public:Ebooks:Stream] Error streaming ebook:', err)
+      res.status(500).json({ error: 'Failed to stream ebook file' })
     }
   }
 )

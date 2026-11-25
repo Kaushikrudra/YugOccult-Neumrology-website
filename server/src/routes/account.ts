@@ -477,12 +477,18 @@ accountRouter.post(
         return
       }
 
-      if (!isStorageConfigured()) {
-        res.status(501).json({ error: 'Secure storage service is temporarily unavailable' })
+      const fileName = reportOrder.delivered_file_name || 'Personalised-Report.pdf'
+      const localPath = getLocalFilePath(reportOrder.delivered_pdf_path)
+      if (localPath) {
+        res.status(200).json({ url: `/api/account/report-orders/${id}/stream`, fileName })
         return
       }
 
-      const fileName = reportOrder.delivered_file_name || 'Personalised-Report.pdf'
+      if (!isStorageConfigured()) {
+        res.status(404).json({ error: 'Report file not found on storage' })
+        return
+      }
+
       const signedUrl = await createSignedDownloadUrl(
         reportOrder.delivered_pdf_path,
         60,
@@ -493,6 +499,67 @@ accountRouter.post(
     } catch (err: any) {
       console.error('[Account:ReportDownload] Error:', err)
       res.status(500).json({ error: 'Failed to generate report download link' })
+    }
+  }
+)
+
+// -----------------------------------------------------------------------------
+// GET /api/account/report-orders/:id/stream
+// Streams locally stored delivered report PDF for the authenticated owner
+// -----------------------------------------------------------------------------
+accountRouter.get(
+  '/report-orders/:id/stream',
+  async (req: Request, res: Response) => {
+    const userId = req.user?.id
+    const { id } = req.params
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' })
+      return
+    }
+
+    try {
+      const { rows } = await pool.query<{
+        id: string
+        user_id: string
+        status: string
+        delivered_pdf_path: string | null
+        delivered_file_name: string | null
+      }>(
+        `SELECT id, user_id, status, delivered_pdf_path, delivered_file_name
+         FROM report_orders
+         WHERE id = $1;`,
+        [id]
+      )
+
+      if (rows.length === 0) {
+        res.status(404).json({ error: 'Report order not found' })
+        return
+      }
+
+      const reportOrder = rows[0]
+
+      if (reportOrder.user_id !== userId) {
+        res.status(403).json({ error: 'Forbidden: Access denied' })
+        return
+      }
+
+      if (reportOrder.status !== 'delivered' || !reportOrder.delivered_pdf_path) {
+        res.status(400).json({ error: 'Report PDF is not available yet' })
+        return
+      }
+
+      const localPath = getLocalFilePath(reportOrder.delivered_pdf_path)
+      if (localPath) {
+        const fileName = reportOrder.delivered_file_name || 'Personalised-Report.pdf'
+        res.download(localPath, fileName)
+        return
+      }
+
+      res.status(404).json({ error: 'File not found on local storage' })
+    } catch (err: any) {
+      console.error('[Account:ReportStream] Error:', err)
+      res.status(500).json({ error: 'Failed to stream report PDF' })
     }
   }
 )

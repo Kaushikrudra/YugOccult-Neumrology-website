@@ -225,7 +225,20 @@ export const Footer: React.FC = () => {
 
         {/* Bottom copyright line */}
         <div className="pt-6 sm:pt-8 border-t border-secondary/30 flex flex-col sm:flex-row items-center justify-between text-xs text-ivory/60 gap-3 sm:gap-4 text-center sm:text-left">
-          <p>© 2026 Yug Skill Institute. All rights reserved.</p>
+          <div className="space-y-1">
+            <p>© 2026 Yug Skill Institute. All rights reserved.</p>
+            <p>
+              Developed by{' '}
+              <a
+                href="https://www.xanvoraa.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent hover:underline font-medium transition-colors"
+              >
+                Xanvoraa Technology
+              </a>
+            </p>
+          </div>
           <div className="flex items-center gap-3 sm:gap-4 flex-wrap justify-center sm:justify-end">
             <Link to="/terms" className="hover:text-accent transition-colors">
               Terms

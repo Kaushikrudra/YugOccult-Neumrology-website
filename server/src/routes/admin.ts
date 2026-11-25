@@ -1920,11 +1920,11 @@ adminRouter.patch('/bookings/:id', async (req: Request, res: Response) => {
 // SITE SETTINGS CMS ENDPOINTS & ASSET UPLOADS
 // -----------------------------------------------------------------------------
 
-// Dedicated multer for site images (max 2MB, JPEG/PNG/WEBP)
+// Dedicated multer for site images (max 10MB, JPEG/PNG/WEBP)
 const siteImageUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 2 * 1024 * 1024, // 2MB max
+    fileSize: 10 * 1024 * 1024, // 10MB max
   },
   fileFilter: (_req, file, cb) => {
     const allowedMimes = ['image/jpeg', 'image/png', 'image/webp']
@@ -1943,7 +1943,7 @@ adminRouter.post(
     siteImageUpload.single('file')(req, res, (err: any) => {
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
-          res.status(400).json({ error: 'Image exceeds maximum allowed size of 2MB' })
+          res.status(400).json({ error: 'Image exceeds maximum allowed size of 10MB' })
           return
         }
         res.status(400).json({ error: err.message })
@@ -2354,6 +2354,17 @@ adminRouter.put('/site-settings', async (req: Request, res: Response) => {
 // -----------------------------------------------------------------------------
 
 // Dedicated multer for PDF ebooks (max 25MB, application/pdf only)
+const coverImageUrlSchema = z
+  .string()
+  .trim()
+  .refine(
+    (val) => val === '' || val.startsWith('/uploads/') || /^https?:\/\/.+/.test(val),
+    'Cover image must be a valid URL or uploaded asset path'
+  )
+  .optional()
+  .nullable()
+  .or(z.literal(''))
+
 const ebookPdfUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -2361,7 +2372,8 @@ const ebookPdfUpload = multer({
   },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase()
-    if (file.mimetype === 'application/pdf' && ext === '.pdf') {
+    const allowedMimes = ['application/pdf', 'application/x-pdf', 'application/octet-stream']
+    if (allowedMimes.includes(file.mimetype) && ext === '.pdf') {
       cb(null, true)
     } else {
       cb(new Error('Invalid file format. Only PDF (.pdf) files are allowed.'))
@@ -2381,13 +2393,7 @@ const CreateEbookSchema = z.object({
     .max(1000, 'Description must not exceed 1000 characters')
     .optional()
     .nullable(),
-  cover_image_url: z
-    .string()
-    .trim()
-    .url('Cover image must be a valid URL')
-    .optional()
-    .nullable()
-    .or(z.literal('')),
+  cover_image_url: coverImageUrlSchema,
   is_visible: z
     .union([z.boolean(), z.string().transform((val) => val === 'true')])
     .default(true),
@@ -2407,13 +2413,7 @@ const UpdateEbookSchema = z.object({
     .max(1000, 'Description must not exceed 1000 characters')
     .optional()
     .nullable(),
-  cover_image_url: z
-    .string()
-    .trim()
-    .url('Cover image must be a valid URL')
-    .optional()
-    .nullable()
-    .or(z.literal('')),
+  cover_image_url: coverImageUrlSchema,
   is_visible: z
     .union([z.boolean(), z.string().transform((val) => val === 'true')])
     .optional(),
@@ -2480,13 +2480,6 @@ adminRouter.post(
     })
   },
   async (req: Request, res: Response) => {
-    if (!isStorageConfigured()) {
-      res.status(501).json({
-        error: 'Storage not configured. File uploads are disabled. Please configure Supabase storage.',
-      })
-      return
-    }
-
     const file = req.file
     if (!file) {
       res.status(400).json({ error: 'Please select a PDF file to upload' })
@@ -2612,11 +2605,6 @@ adminRouter.put(
 
       const file = req.file
       if (file) {
-        if (!isStorageConfigured()) {
-          res.status(501).json({ error: 'Storage not configured. Cannot replace file.' })
-          return
-        }
-
         if (file.buffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
           res.status(400).json({ error: 'Invalid file format. The replacement file is not a valid PDF document.' })
           return
@@ -2931,7 +2919,7 @@ const CreateReportSchema = z.object({
     .default([]),
   price: z.coerce.number().int().min(0, 'Price must be non-negative').default(0),
   original_price: z.coerce.number().int().min(0).optional().nullable(),
-  cover_image_url: z.string().trim().url().optional().nullable().or(z.literal('')),
+  cover_image_url: coverImageUrlSchema,
   badge: z.enum(['new', 'popular', 'trending', 'best_seller']).optional().nullable().or(z.literal('')),
   section: z.enum(['personalized', 'additional']).default('personalized'),
   is_visible: z.coerce.boolean().default(true),
@@ -2958,7 +2946,7 @@ const UpdateReportSchema = z.object({
     .optional(),
   price: z.coerce.number().int().min(0).optional(),
   original_price: z.coerce.number().int().min(0).optional().nullable(),
-  cover_image_url: z.string().trim().url().optional().nullable().or(z.literal('')),
+  cover_image_url: coverImageUrlSchema,
   badge: z.enum(['new', 'popular', 'trending', 'best_seller']).optional().nullable().or(z.literal('')),
   section: z.enum(['personalized', 'additional']).optional(),
   is_visible: z.coerce.boolean().optional(),
@@ -3394,7 +3382,8 @@ const reportPdfUpload = multer({
   limits: { fileSize: 25 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase()
-    if (ext !== '.pdf' || file.mimetype !== 'application/pdf') {
+    const allowedMimes = ['application/pdf', 'application/x-pdf', 'application/octet-stream']
+    if (ext !== '.pdf' || !allowedMimes.includes(file.mimetype)) {
       cb(new Error('Only PDF documents (.pdf) are allowed for reports.'))
       return
     }
@@ -3779,11 +3768,6 @@ adminRouter.post(
       return
     }
 
-    if (!isStorageConfigured()) {
-      res.status(501).json({ error: 'Storage not configured. Cannot upload delivered report.' })
-      return
-    }
-
     // PDF Magic bytes check (%PDF-)
     if (file.buffer.subarray(0, 5).toString('ascii') !== '%PDF-') {
       res.status(400).json({ error: 'Invalid file format. The uploaded file is not a valid PDF document.' })
@@ -3882,8 +3866,14 @@ adminRouter.get('/report-orders/:id/file', async (req: Request, res: Response) =
       return
     }
 
+    const localPath = getLocalFilePath(delivered_pdf_path)
+    if (localPath) {
+      res.status(200).json({ url: `/api/admin/report-orders/${id}/stream` })
+      return
+    }
+
     if (!isStorageConfigured()) {
-      res.status(501).json({ error: 'Storage not configured' })
+      res.status(404).json({ error: 'Delivered report file not found on storage' })
       return
     }
 
@@ -3896,6 +3886,46 @@ adminRouter.get('/report-orders/:id/file', async (req: Request, res: Response) =
   } catch (err) {
     console.error('[Admin:ReportOrders:File] Error generating download URL')
     res.status(500).json({ error: 'Failed to generate download URL' })
+  }
+})
+
+// 12b. GET /api/admin/report-orders/:id/stream - stream locally stored report PDF for admin
+adminRouter.get('/report-orders/:id/stream', async (req: Request, res: Response) => {
+  const paramResult = UuidParamSchema.safeParse(req.params)
+  if (!paramResult.success) {
+    res.status(400).json({ error: 'Invalid order ID format' })
+    return
+  }
+
+  const { id } = paramResult.data
+
+  try {
+    const { rows } = await pool.query<{
+      delivered_pdf_path: string | null
+      delivered_file_name: string | null
+    }>('SELECT delivered_pdf_path, delivered_file_name FROM report_orders WHERE id = $1;', [id])
+
+    if (rows.length === 0) {
+      res.status(404).json({ error: 'Report order not found' })
+      return
+    }
+
+    const { delivered_pdf_path, delivered_file_name } = rows[0]
+    if (!delivered_pdf_path) {
+      res.status(404).json({ error: 'No delivered report file found for this order' })
+      return
+    }
+
+    const localPath = getLocalFilePath(delivered_pdf_path)
+    if (localPath) {
+      res.download(localPath, delivered_file_name || 'report.pdf')
+      return
+    }
+
+    res.status(404).json({ error: 'File not found on local storage' })
+  } catch (err) {
+    console.error('[Admin:ReportOrders:Stream] Error streaming report file:', err)
+    res.status(500).json({ error: 'Failed to stream report file' })
   }
 })
 

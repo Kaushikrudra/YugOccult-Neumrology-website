@@ -438,8 +438,8 @@ export const AdminEbooks: React.FC = () => {
       return
     }
 
-    if (file.size > 2 * 1024 * 1024) {
-      setFormError('Cover image exceeds maximum allowed size of 2MB')
+    if (file.size > 10 * 1024 * 1024) {
+      setFormError('Cover image exceeds maximum allowed size of 10MB')
       return
     }
 
@@ -1012,10 +1012,10 @@ export const AdminEbooks: React.FC = () => {
                 </label>
                 <div className="flex gap-2">
                   <input
-                    type="url"
+                    type="text"
                     value={formCoverUrl}
                     onChange={(e) => setFormCoverUrl(e.target.value)}
-                    placeholder="https://... (Cover Image URL)"
+                    placeholder="/uploads/... or https://..."
                     className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-[#5B3E96]/20 bg-[#FBF7EE]/40 text-[#2B2A3D] focus:outline-none focus:ring-2 focus:ring-[#5B3E96]/40 min-h-[44px]"
                   />
                   <label className="px-3 py-2 rounded-xl bg-[#EFEAF8] hover:bg-[#E2D9F3] text-[#5B3E96] text-xs font-semibold cursor-pointer border border-[#5B3E96]/30 flex items-center gap-1.5 shrink-0 transition-colors min-h-[44px]">
