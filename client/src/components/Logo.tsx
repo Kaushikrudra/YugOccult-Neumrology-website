@@ -1,7 +1,5 @@
 import React from 'react'
-import logoFull from '../assets/logo/logo-full.svg'
-import logoIcon from '../assets/logo/logo-icon.svg'
-import logoLight from '../assets/logo/logo-light.svg'
+import logoIcon from '../assets/logo/logo-icon.png'
 
 export interface LogoProps {
   variant?: 'full' | 'icon' | 'light'
@@ -14,27 +12,69 @@ export const Logo: React.FC<LogoProps> = ({
   className = '',
   alt = 'Yug Skill Institute',
 }) => {
-  const getLogoSource = () => {
-    switch (variant) {
-      case 'icon':
-        return logoIcon
-      case 'light':
-        return logoLight
-      case 'full':
-      default:
-        return logoFull
-    }
+  if (variant === 'icon') {
+    return (
+      <img
+        src={logoIcon}
+        alt={alt}
+        className={`w-auto max-w-full shrink-0 object-contain transition-transform ${className}`}
+        loading="eager"
+      />
+    )
   }
 
-  const baseClasses = 'w-auto max-w-full shrink-0 object-contain transition-transform'
+  const isLight = variant === 'light'
 
   return (
-    <img
-      src={getLogoSource()}
-      alt={alt}
-      className={`${baseClasses} ${className}`}
-      loading="eager"
-    />
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 300 90"
+      fill="none"
+      role="img"
+      aria-label={alt}
+      className={`aspect-[300/90] max-w-full shrink-0 transition-transform ${className}`}
+    >
+      <image
+        href={logoIcon}
+        x="4"
+        y="3"
+        width="84"
+        height="84"
+        preserveAspectRatio="xMidYMid meet"
+      />
+
+      <text
+        x="100"
+        y="46"
+        style={{
+          fontFamily: "'Cormorant Garamond', Georgia, serif",
+          fontSize: '39px',
+          fontWeight: 700,
+          letterSpacing: '0.5px',
+        }}
+      >
+        <tspan fill={isLight ? '#FBF7EE' : '#2E2A5C'}>Yug </tspan>
+        <tspan fill="#C9A227">Skill</tspan>
+      </text>
+
+      <text
+        x="101"
+        y="68"
+        style={{
+          fontFamily:
+            "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+          fontSize: '11.5px',
+          fontWeight: 800,
+          letterSpacing: '0.46em',
+          fill: isLight ? '#EFEAF8' : '#5B3E96',
+          stroke: isLight ? '#EFEAF8' : '#5B3E96',
+          strokeWidth: '0.4px',
+          paintOrder: 'stroke fill',
+        }}
+      >
+        INSTITUTE
+      </text>
+    </svg>
   )
 }
 
