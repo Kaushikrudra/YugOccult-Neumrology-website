@@ -437,9 +437,9 @@ export const Courses: React.FC = () => {
             </div>
           </div>
 
-          {/* 2. Horizontally Scrollable Category Filter Chips */}
-          <div className="w-full max-w-full overflow-x-auto no-scrollbar py-2 px-1">
-            <div className="inline-flex items-center gap-2 min-w-max mx-auto justify-center w-full">
+          {/* 2. Wrapped Category Filter Chips (Multi-line, No Horizontal Scroll) */}
+          <div className="w-full max-w-5xl mx-auto py-2 px-1">
+            <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
               {categoryChips.map((chip) => {
                 const isActive = selectedCategory === chip.name
 
@@ -448,7 +448,7 @@ export const Courses: React.FC = () => {
                     key={chip.name}
                     type="button"
                     onClick={() => setSelectedCategory(chip.name)}
-                    className={`py-2 px-4 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                    className={`py-1.5 sm:py-2 px-3.5 sm:px-4 rounded-full text-xs sm:text-sm font-semibold transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
                       isActive
                         ? 'bg-secondary text-ivory shadow-sm'
                         : 'bg-white/80 text-ink/75 hover:text-secondary hover:bg-white border border-secondary/20'
