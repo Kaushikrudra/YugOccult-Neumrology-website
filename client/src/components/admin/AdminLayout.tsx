@@ -87,7 +87,7 @@ export const AdminLayout: React.FC = () => {
       {/* Mobile Topbar */}
       <header className="md:hidden flex items-center justify-between gap-2 px-4 py-3 bg-[#2E2A5C] text-[#FBF7EE] border-b border-[#C9A227]/30 sticky top-0 z-40">
         <div className="flex items-center gap-2.5 min-w-0">
-          <Logo variant="light" className="h-7 w-auto shrink-0" />
+          <Logo variant="light" className="h-9 w-auto shrink-0" />
           <span className="text-[11px] font-semibold uppercase tracking-widest text-[#C9A227] truncate">
             Admin Portal
           </span>
@@ -219,7 +219,7 @@ export const AdminLayout: React.FC = () => {
       <aside className="hidden md:flex flex-col w-64 lg:w-72 bg-[#2E2A5C] text-[#FBF7EE] border-r border-[#C9A227]/20 shrink-0 sticky top-0 h-screen">
         {/* Brand Header */}
         <div className="p-6 border-b border-white/10 flex flex-col gap-2">
-          <Logo variant="light" className="h-10 w-auto" />
+          <Logo variant="light" className="h-12 w-auto" />
           <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-widest text-[#C9A227]">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>Admin Control Panel</span>

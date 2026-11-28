@@ -29,7 +29,7 @@ export const Footer: React.FC = () => {
               <Link to="/" className="inline-block" aria-label="Yug Skill Institute Home">
                 <Logo
                   variant="light"
-                  className="h-14 sm:h-18 md:h-20 w-auto mb-1.5 sm:mb-2 group-hover:scale-105 transition-transform"
+                  className="h-16 sm:h-20 w-auto mb-1.5 sm:mb-2 group-hover:scale-105 transition-transform"
                 />
               </Link>
               <p className="text-accent text-[11px] sm:text-xs tracking-[0.2em] uppercase font-bold">

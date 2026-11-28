@@ -47,7 +47,7 @@ export const Navbar: React.FC = () => {
           >
             <Logo
               variant="full"
-              className="h-8 min-[360px]:h-9 min-[400px]:h-10 sm:h-12 md:h-14 lg:h-20 w-auto max-w-[200px] min-[360px]:max-w-[230px] sm:max-w-none group-hover:scale-[1.01] transition-transform"
+              className="h-10 min-[360px]:h-11 sm:h-14 md:h-16 lg:h-20 w-auto max-w-[240px] min-[360px]:max-w-[270px] sm:max-w-none group-hover:scale-[1.01] transition-transform"
             />
           </Link>
 
@@ -118,7 +118,7 @@ export const Navbar: React.FC = () => {
           {/* Top branding inside mobile drawer */}
           <div className="pb-3 mb-3 border-b border-secondary/10 flex items-center justify-between">
             <div className="flex flex-col">
-              <Logo variant="full" className="h-8 sm:h-9 w-auto max-w-[200px]" />
+              <Logo variant="full" className="h-10 sm:h-11 w-auto max-w-[240px]" />
               <span className="text-[10px] tracking-[0.16em] uppercase text-primary font-bold mt-1">
                 Astrology • Numerology • Tarot
               </span>

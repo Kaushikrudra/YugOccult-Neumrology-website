@@ -28,56 +28,56 @@ export const Logo: React.FC<LogoProps> = ({
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 300 90"
+      viewBox="0 0 320 88"
       fill="none"
       role="img"
       aria-label={alt}
-      className={`aspect-[300/90] max-w-full shrink-0 transition-transform ${className}`}
+      className={`aspect-[320/88] max-w-full shrink-0 transition-transform ${className}`}
     >
       <image
         href={logoIcon}
-        x="4"
-        y="3"
-        width="84"
-        height="84"
+        x="2"
+        y="4"
+        width="76"
+        height="80"
         preserveAspectRatio="xMidYMid meet"
       />
 
       <text
-        x="100"
+        x="86"
         y="46"
         style={{
           fontFamily: "Georgia, 'Cormorant Garamond', serif",
-          fontSize: '39px',
+          fontSize: '46px',
           fontWeight: 700,
-          letterSpacing: '0.5px',
+          letterSpacing: '0.4px',
           paintOrder: 'stroke fill',
         }}
       >
         <tspan
           fill={isLight ? '#FBF7EE' : '#2E2A5C'}
           stroke={isLight ? '#FBF7EE' : '#2E2A5C'}
-          strokeWidth="0.6px"
+          strokeWidth="0.7px"
         >
           Yug{' '}
         </tspan>
-        <tspan fill="#C9A227" stroke="#C9A227" strokeWidth="0.6px">
+        <tspan fill="#C9A227" stroke="#C9A227" strokeWidth="0.7px">
           Skill
         </tspan>
       </text>
 
       <text
-        x="101"
-        y="68"
+        x="88"
+        y="71"
         style={{
           fontFamily:
             "'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-          fontSize: '11.5px',
+          fontSize: '14px',
           fontWeight: 800,
-          letterSpacing: '0.46em',
+          letterSpacing: '0.52em',
           fill: isLight ? '#EFEAF8' : '#5B3E96',
           stroke: isLight ? '#EFEAF8' : '#5B3E96',
-          strokeWidth: '0.4px',
+          strokeWidth: '0.5px',
           paintOrder: 'stroke fill',
         }}
       >
