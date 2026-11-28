@@ -47,14 +47,23 @@ export const Logo: React.FC<LogoProps> = ({
         x="100"
         y="46"
         style={{
-          fontFamily: "'Cormorant Garamond', Georgia, serif",
+          fontFamily: "Georgia, 'Cormorant Garamond', serif",
           fontSize: '39px',
           fontWeight: 700,
           letterSpacing: '0.5px',
+          paintOrder: 'stroke fill',
         }}
       >
-        <tspan fill={isLight ? '#FBF7EE' : '#2E2A5C'}>Yug </tspan>
-        <tspan fill="#C9A227">Skill</tspan>
+        <tspan
+          fill={isLight ? '#FBF7EE' : '#2E2A5C'}
+          stroke={isLight ? '#FBF7EE' : '#2E2A5C'}
+          strokeWidth="0.6px"
+        >
+          Yug{' '}
+        </tspan>
+        <tspan fill="#C9A227" stroke="#C9A227" strokeWidth="0.6px">
+          Skill
+        </tspan>
       </text>
 
       <text
