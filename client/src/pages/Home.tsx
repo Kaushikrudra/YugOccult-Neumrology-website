@@ -52,8 +52,8 @@ export const Home: React.FC = () => {
   const [touchEnd, setTouchEnd] = useState<number | null>(null)
   const autoPlayRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
-  // Real course catalog with API fetching & mock fallback
-  const [courses, setCourses] = useState<Course[]>(coursesData)
+  // Real course catalog fetched from API with mock fallback only on error
+  const [courses, setCourses] = useState<Course[]>([])
 
   // Master consultation settings (fee, duration) from DB with consultationData fallback
   const [consultation, setConsultation] = useState({
@@ -67,11 +67,13 @@ export const Home: React.FC = () => {
     // Fetch courses
     api.get<{ courses: Course[] }>('/api/courses')
       .then((res) => {
-        if (isMounted && res?.courses && res.courses.length > 0) {
+        if (isMounted && Array.isArray(res?.courses)) {
           setCourses(res.courses)
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        if (isMounted) setCourses(coursesData)
+      })
 
     // Fetch visible testimonials - strictly DB only (hide section if empty or failed)
     api.get<{ testimonials: HomeTestimonial[] }>('/api/testimonials')

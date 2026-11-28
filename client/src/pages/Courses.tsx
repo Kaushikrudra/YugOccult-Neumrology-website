@@ -51,9 +51,9 @@ export const Courses: React.FC = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
 
-  // Courses state (initialized with fallback mock data, updated from API if available)
-  const [courses, setCourses] = useState<Course[]>(coursesData)
-  const [loading, setLoading] = useState(false)
+  // Courses state (fetched from API, falls back to mock data only if request fails)
+  const [courses, setCourses] = useState<Course[]>([])
+  const [loading, setLoading] = useState(true)
 
   // Ebooks state (fetched from /api/ebooks)
   const [ebooks, setEbooks] = useState<Ebook[]>([])
@@ -85,11 +85,11 @@ export const Courses: React.FC = () => {
       try {
         setLoading(true)
         const res = await api.get<{ courses: Course[] }>('/api/courses')
-        if (isMounted && res?.courses && res.courses.length > 0) {
+        if (isMounted && Array.isArray(res?.courses)) {
           setCourses(res.courses)
         }
       } catch {
-        // Fallback to mock data already in state
+        if (isMounted) setCourses(coursesData)
       } finally {
         if (isMounted) setLoading(false)
       }

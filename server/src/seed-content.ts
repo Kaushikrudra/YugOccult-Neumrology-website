@@ -222,18 +222,6 @@ const COURSES_CATALOG: CourseSeedItem[] = [
     position: 14,
   },
   {
-    slug: 'company-name-correction-report',
-    title: 'Company Name Correction Report',
-    category: 'Numerology',
-    price: 2300,
-    original_price: 9999,
-    level: null,
-    is_package: false,
-    is_featured: false,
-    description: 'Company Name Correction Report providing numerological commercial brand alignment and business name optimization.',
-    position: 15,
-  },
-  {
     slug: 'loshu-grid-numerology-basic-to-advanced',
     title: 'Loshu Grid Numerology Basic to Advanced',
     category: 'Numerology',
