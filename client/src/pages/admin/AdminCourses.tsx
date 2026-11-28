@@ -214,6 +214,21 @@ const SortableMaterialItem: React.FC<SortableMaterialItemProps> = ({
   )
 }
 
+const STANDARD_COURSE_CATEGORIES = [
+  'Tarot',
+  'Astrology',
+  'Numerology',
+  'Vastu',
+  'Manifestation',
+  'Healing',
+  'Remedies',
+  'Switchwords',
+  'Business',
+  'NLP',
+  'Packages',
+  'Other',
+]
+
 export const AdminCourses: React.FC = () => {
   const [courses, setCourses] = useState<CourseItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -375,19 +390,7 @@ export const AdminCourses: React.FC = () => {
     setCourseSlug(course.slug || '')
     setCourseDesc(course.description)
     setCourseImageUrl(course.image_url || '')
-    const standardCategories = [
-      'Tarot',
-      'Astrology',
-      'Numerology',
-      'Vastu',
-      'Manifestation',
-      'Healing',
-      'Remedies',
-      'Switchwords',
-      'Packages',
-      'Other',
-    ]
-    if (standardCategories.includes(course.category)) {
+    if (STANDARD_COURSE_CATEGORIES.includes(course.category)) {
       setCourseCategory(course.category)
       setIsCustomCategory(false)
       setCustomCategory('')
@@ -1286,18 +1289,7 @@ export const AdminCourses: React.FC = () => {
                     }}
                     className="w-full px-3.5 py-2.5 rounded-xl border border-[#5B3E96]/20 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5B3E96]/30"
                   >
-                    {[
-                      'Tarot',
-                      'Astrology',
-                      'Numerology',
-                      'Vastu',
-                      'Manifestation',
-                      'Healing',
-                      'Remedies',
-                      'Switchwords',
-                      'Packages',
-                      'Other',
-                    ].map((cat) => (
+                    {STANDARD_COURSE_CATEGORIES.map((cat) => (
                       <option key={cat} value={cat}>
                         {cat}
                       </option>

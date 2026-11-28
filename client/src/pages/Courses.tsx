@@ -33,8 +33,12 @@ const PREFERRED_CATEGORY_ORDER = [
   'Healing',
   'Remedies',
   'Switchwords',
+  'Business',
+  'NLP',
   'Other',
 ]
+
+const ALWAYS_VISIBLE_CATEGORIES = new Set(['Business', 'NLP'])
 
 export const Courses: React.FC = () => {
   usePageMeta({
@@ -171,8 +175,8 @@ export const Courses: React.FC = () => {
     const availableCategories: Array<{ name: string; count: number }> = []
 
     for (const cat of PREFERRED_CATEGORY_ORDER) {
-      const count = countMap.get(cat)
-      if (count && count > 0) {
+      const count = countMap.get(cat) || 0
+      if (count > 0 || ALWAYS_VISIBLE_CATEGORIES.has(cat)) {
         availableCategories.push({ name: cat, count })
       }
     }
