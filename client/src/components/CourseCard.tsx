@@ -13,6 +13,8 @@ import {
   ArrowRight,
   Briefcase,
   Brain,
+  Lightbulb,
+  Crown,
 } from 'lucide-react'
 import Button from './Button'
 import { useAuth } from '../context/AuthContext'
@@ -101,6 +103,10 @@ export const CourseCard: React.FC<CourseCardProps> = ({
         return <Briefcase className="w-6 h-6 text-accent" />
       case 'NLP':
         return <Brain className="w-6 h-6 text-secondary" />
+      case 'Life Skill':
+        return <Lightbulb className="w-6 h-6 text-accent" />
+      case 'Membership':
+        return <Crown className="w-6 h-6 text-accent" />
       default:
         return <Sparkles className="w-6 h-6 text-accent" />
     }

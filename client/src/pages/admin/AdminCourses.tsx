@@ -225,6 +225,8 @@ const STANDARD_COURSE_CATEGORIES = [
   'Switchwords',
   'Business',
   'NLP',
+  'Life Skill',
+  'Membership',
   'Packages',
   'Other',
 ]

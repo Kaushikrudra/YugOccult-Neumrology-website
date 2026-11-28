@@ -35,10 +35,12 @@ const PREFERRED_CATEGORY_ORDER = [
   'Switchwords',
   'Business',
   'NLP',
+  'Life Skill',
+  'Membership',
   'Other',
 ]
 
-const ALWAYS_VISIBLE_CATEGORIES = new Set(['Business', 'NLP'])
+const ALWAYS_VISIBLE_CATEGORIES = new Set(['Business', 'NLP', 'Life Skill', 'Membership'])
 
 export const Courses: React.FC = () => {
   usePageMeta({
