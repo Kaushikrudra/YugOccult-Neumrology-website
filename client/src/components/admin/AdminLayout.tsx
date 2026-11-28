@@ -152,7 +152,7 @@ export const AdminLayout: React.FC = () => {
 
       {/* Mobile Drawer Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden fixed inset-0 z-50 bg-[#2E2A5C]/98 backdrop-blur-sm flex flex-col overflow-hidden">
+        <div className="md:hidden fixed inset-0 z-50 bg-[#2E2A5C] text-[#FBF7EE] flex flex-col overflow-hidden">
           {/* Drawer Header */}
           <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-white/10 shrink-0">
             <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-[#C9A227] uppercase min-w-0">
